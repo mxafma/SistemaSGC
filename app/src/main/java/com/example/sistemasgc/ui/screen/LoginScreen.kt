@@ -1,4 +1,5 @@
 package com.example.sistemasgc.ui.screen
+import android.content.res.Configuration
 
 import androidx.compose.foundation.background                 // Fondo
 import androidx.compose.foundation.layout.*                   // Box/Column/Row/Spacer
@@ -12,6 +13,7 @@ import androidx.compose.ui.Alignment                          // Alineaciones
 import androidx.compose.ui.Modifier                           // Modificador
 import androidx.compose.ui.text.input.*                       // KeyboardOptions/Types/Transformations
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp                            // DPs
 import androidx.lifecycle.compose.collectAsStateWithLifecycle // Observa StateFlow con lifecycle
 import com.example.sistemasgc.ui.viewmodel.AuthViewModel         // Nuestro ViewModel
@@ -64,7 +66,7 @@ private fun LoginScreen(
     onSubmit: () -> Unit,                                    // Acción enviar
     onGoRegister: () -> Unit                                 // Acción ir a registro
 ) {
-    val bg = MaterialTheme.colorScheme.secondaryContainer // Fondo distinto para contraste
+    val bg = MaterialTheme.colorScheme.background // Fondo distinto para contraste
     //4 Agregamos la siguiente linea
     var showPass by remember { mutableStateOf(false) }        // Estado local para mostrar/ocultar contraseña
 
@@ -73,7 +75,7 @@ private fun LoginScreen(
             .fillMaxSize() // Ocupa todo
             .background(bg) // Fondo
             .padding(16.dp), // Margen
-        contentAlignment = Alignment.Center // Centro
+        contentAlignment = Alignment.TopCenter // Centro
     ) {
         Column(
             //5 Anexamos el modificador
@@ -82,7 +84,8 @@ private fun LoginScreen(
         ) {
             Text(
                 text = "Bienvenido",
-                style = MaterialTheme.typography.headlineSmall // Título
+                style = MaterialTheme.typography.headlineSmall, // Título
+                textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(12.dp)) // Separación
 
@@ -163,5 +166,41 @@ private fun LoginScreen(
             }
             //fin modificacion de formulario
         }
+    }
+}
+
+
+
+
+
+
+@Preview(
+    name = "Login – Light",
+    showBackground = true,
+    showSystemUi = true
+)
+@Preview(
+    name = "Login – Dark",
+    showBackground = true,
+    showSystemUi = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES
+)
+@Composable
+private fun LoginScreenPreview() {
+    // Si tienes tu propio tema, reemplaza por: SistemaSGCTheme { ... }
+    MaterialTheme {
+        LoginScreen(
+            email = "user@example.com",
+            pass = "password",
+            emailError = null,
+            passError = null,
+            canSubmit = true,
+            isSubmitting = false,
+            errorMsg = null,
+            onEmailChange = {},
+            onPassChange = {},
+            onSubmit = {},
+            onGoRegister = {}
+        )
     }
 }
