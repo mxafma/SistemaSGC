@@ -18,11 +18,14 @@ import com.example.sistemasgc.ui.components.AppTopBar // Barra superior
 import com.example.sistemasgc.ui.components.AppDrawer // Drawer composable
 import com.example.sistemasgc.ui.components.defaultDrawerItems // Ítems por defecto
 import com.example.sistemasgc.ui.screen.HomeScreen // Pantalla Home
-import com.example.sistemasgc.ui.screen.LoginScreen // Pantalla Login
-import com.example.sistemasgc.ui.screen.RegisterScreen // Pantalla Registro
+import com.example.sistemasgc.ui.screen.LoginScreenVm // Pantalla Login
+import com.example.sistemasgc.ui.screen.RegisterScreenVm // Pantalla Registro
+import com.example.sistemasgc.ui.viewmodel.AuthViewModel
 
 @Composable // Gráfico de navegación + Drawer + Scaffold
-fun AppNavGraph(navController: NavHostController) { // Recibe el controlador
+fun AppNavGraph(navController: NavHostController,
+                authViewModel: AuthViewModel        // <-- 1.- NUEVO: recibimos el VM inyectado desde MainActivity
+) { // Recibe el controlador
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed) // Estado del drawer
     val scope = rememberCoroutineScope() // Necesario para abrir/cerrar drawer
@@ -78,16 +81,18 @@ fun AppNavGraph(navController: NavHostController) { // Recibe el controlador
                 composable(Route.Login.path) { // Destino Login
                     //1 modificamos el acceso a la pagina
                     // Usamos la versión con ViewModel (LoginScreenVm) para formularios/validación en tiempo real
-                    LoginScreen(
-                        onLoginOk= goHome,            // Si el VM marca success=true, navegamos a Home
+                    LoginScreenVm(
+                        vm = authViewModel,            // <-- NUEVO: pasamos VM inyectado
+                        onLoginOkNavigateHome = goHome,            // Si el VM marca success=true, navegamos a Home
                         onGoRegister = goRegister                  // Enlace para ir a la pantalla de Registro
                     )
                 }
                 composable(Route.Register.path) { // Destino Registro
                     //2 modificamos el acceso a la pagina
                     // Usamos la versión con ViewModel (RegisterScreenVm) para formularios/validación en tiempo real
-                    RegisterScreen(
-                        onRegistered = goLogin,       // Si el VM marca success=true, volvemos a Login
+                    RegisterScreenVm(
+                        vm = authViewModel,            // <-- NUEVO: pasamos VM inyectado
+                        onRegisteredNavigateLogin = goLogin,       // Si el VM marca success=true, volvemos a Login
                         onGoLogin = goLogin                        // Botón alternativo para ir a Login
                     )
                 }

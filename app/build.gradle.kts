@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.uinavegacion"
+    namespace = "com.example.sistemasgc"
     compileSdk = 36
 
     defaultConfig {
