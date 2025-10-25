@@ -75,7 +75,7 @@ private fun LoginScreen(
             .fillMaxSize() // Ocupa todo
             .background(bg) // Fondo
             .padding(16.dp), // Margen
-        contentAlignment = Alignment.TopCenter // Centro
+        contentAlignment = Alignment.Center // Centro
     ) {
         Column(
             //5 Anexamos el modificador
@@ -87,16 +87,10 @@ private fun LoginScreen(
                 style = MaterialTheme.typography.headlineSmall, // Título
                 textAlign = TextAlign.Center
             )
-            Spacer(Modifier.height(12.dp)) // Separación
+            Spacer(Modifier.height(32.dp))
 
-            Text(
-                text = "Pantalla de Login (demo). Usa la barra superior, el menú lateral o los botones.",
-                textAlign = TextAlign.Center // Alineación centrada
-            )
-            Spacer(Modifier.height(20.dp)) // Separación
-
-            //5 Borramos los elementos anteriores y comenzamos a agregar los elementos dle formulario
 // ---------- EMAIL ----------
+
             OutlinedTextField(
                 value = email,                               // Valor actual
                 onValueChange = onEmailChange,               // Notifica VM (valida email)
