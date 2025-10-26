@@ -1,5 +1,8 @@
 package com.example.sistemasgc.ui.screen
 
+
+import android.content.res.Configuration
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.background                 // Fondo
 import androidx.compose.foundation.layout.*                   // Box/Column/Row/Spacer
 import androidx.compose.foundation.text.KeyboardOptions
@@ -83,7 +86,7 @@ private fun RegisterScreen(
     onSubmit: () -> Unit,                                    // Acción Registrar
     onGoLogin: () -> Unit                                    // Ir a Login
 ) {
-    val bg = MaterialTheme.colorScheme.tertiaryContainer // Fondo único
+    val bg = MaterialTheme.colorScheme.background // fondo blanco
     //4 Anexamos las variables para mostrar y ocultar el password
     var showPass by remember { mutableStateOf(false) }        // Mostrar/ocultar password
     var showConfirm by remember { mutableStateOf(false) }     // Mostrar/ocultar confirm
@@ -233,5 +236,44 @@ private fun RegisterScreen(
                 Text("Ir a Login")
             }
         }
+    }
+}
+@Preview(
+    name = "Register – Light",
+    showBackground = true,
+    showSystemUi = true
+)
+@Preview(
+    name = "Register – Dark",
+    showBackground = true,
+    showSystemUi = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES
+)
+@Composable
+private fun RegisterScreenPreview() {
+    // Si tienes tu propio tema, reemplaza MaterialTheme { ... } por tu tema (p.ej. SistemaSGCTheme)
+    MaterialTheme {
+        RegisterScreen(
+            name = "Matías Arauz",
+            email = "matias@example.com",
+            phone = "987654321",
+            pass = "ClaveSegura123",
+            confirm = "ClaveSegura123",
+            nameError = null,
+            emailError = null,
+            phoneError = null,
+            passError = null,
+            confirmError = null,
+            canSubmit = true,
+            isSubmitting = false,
+            errorMsg = null,
+            onNameChange = {},
+            onEmailChange = {},
+            onPhoneChange = {},
+            onPassChange = {},
+            onConfirmChange = {},
+            onSubmit = {},
+            onGoLogin = {}
+        )
     }
 }

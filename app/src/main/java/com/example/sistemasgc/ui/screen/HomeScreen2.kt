@@ -13,7 +13,10 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun HomeScreen(
     onGoLogin: () -> Unit,
-    onGoRegister: () -> Unit
+    onGoRegister: () -> Unit,
+    onGoProveedores: () -> Unit,
+    onGoProductos: () -> Unit,
+    onGoCompras: () -> Unit
 ) {
     Surface(color = MaterialTheme.colorScheme.background) {
         Box(
@@ -27,25 +30,42 @@ fun HomeScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Bienvenido",
+                    text = "Inicio",
                     style = MaterialTheme.typography.headlineSmall,
                     textAlign = TextAlign.Center
                 )
+
                 Spacer(Modifier.height(24.dp))
 
+                // Accesos básicos
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Button(
-                        onClick = onGoLogin,
-                        modifier = Modifier.weight(1f)
-                    ) { Text("Iniciar sesión") }
 
-                    OutlinedButton(
-                        onClick = onGoRegister,
-                        modifier = Modifier.weight(1f)
-                    ) { Text("Crear cuenta") }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // Accesos a páginas del negocio
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Button(
+                        onClick = onGoProveedores,
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Proveedores") }
+
+                    Button(
+                        onClick = onGoProductos,
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Productos") }
+
+                    Button(
+                        onClick = onGoCompras,
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Compras") }
                 }
             }
         }
@@ -67,11 +87,13 @@ fun HomeScreen(
 )
 @Composable
 private fun HomeScreenPreview() {
-    // Reemplaza por tu tema si tienes uno (p.ej. SistemaSGCTheme)
     MaterialTheme {
         HomeScreen(
             onGoLogin = {},
-            onGoRegister = {}
+            onGoRegister = {},
+            onGoProveedores = {},
+            onGoProductos = {},
+            onGoCompras = {}
         )
     }
 }
