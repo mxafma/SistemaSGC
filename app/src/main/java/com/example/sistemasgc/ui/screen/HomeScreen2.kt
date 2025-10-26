@@ -11,7 +11,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun HomeScreen(
+fun HomeScreen2(
     onGoLogin: () -> Unit,
     onGoRegister: () -> Unit,
     onGoProveedores: () -> Unit,
@@ -30,24 +30,13 @@ fun HomeScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Inicio",
+                    text = "Inicio (logeado)",
                     style = MaterialTheme.typography.headlineSmall,
                     textAlign = TextAlign.Center
                 )
 
                 Spacer(Modifier.height(24.dp))
 
-                // Accesos básicos
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-
-                }
-
-                Spacer(Modifier.height(16.dp))
-
-                // Accesos a páginas del negocio
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -67,28 +56,26 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) { Text("Compras") }
                 }
+
+                Spacer(Modifier.height(24.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(onClick = onGoLogin) { Text("Login") }
+                    OutlinedButton(onClick = onGoRegister) { Text("Registro") }
+                }
             }
         }
     }
 }
 
-// ---------- PREVIEWS ----------
-
-@Preview(
-    name = "Home – Light",
-    showBackground = true,
-    showSystemUi = true
-)
-@Preview(
-    name = "Home – Dark",
-    showBackground = true,
-    showSystemUi = true,
-    uiMode = Configuration.UI_MODE_NIGHT_YES
-)
+@Preview(name = "Home2 – Light", showBackground = true, showSystemUi = true)
+@Preview(name = "Home2 – Dark", showBackground = true, showSystemUi = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
-private fun HomeScreenPreview() {
+private fun HomeScreen2Preview() {
     MaterialTheme {
-        HomeScreen(
+        HomeScreen2(
             onGoLogin = {},
             onGoRegister = {},
             onGoProveedores = {},

@@ -1,101 +1,151 @@
 package com.example.sistemasgc.navigation
-import androidx.compose.foundation.layout.padding // Para aplicar innerPadding
-import androidx.compose.material3.Scaffold // Estructura base con slots
-import androidx.compose.runtime.Composable // Marcador composable
-import androidx.compose.ui.Modifier // Modificador
-import androidx.navigation.NavHostController // Controlador de navegación
-import androidx.navigation.compose.NavHost // Contenedor de destinos
-import androidx.navigation.compose.composable // Declarar cada destino
-import kotlinx.coroutines.launch // Para abrir/cerrar drawer con corrutinas
 
-import androidx.compose.material3.ModalNavigationDrawer // Drawer lateral modal
-import androidx.compose.material3.rememberDrawerState // Estado del drawer
-import androidx.compose.material3.DrawerValue // Valores (Opened/Closed)
-import androidx.compose.runtime.rememberCoroutineScope // Alcance de corrutina
-
-
-import com.example.sistemasgc.ui.components.AppTopBar // Barra superior
-import com.example.sistemasgc.ui.components.AppDrawer // Drawer composable
-import com.example.sistemasgc.ui.components.defaultDrawerItems // Ítems por defecto
-import com.example.sistemasgc.ui.screen.HomeScreen // Pantalla Home
-import com.example.sistemasgc.ui.screen.LoginScreenVm // Pantalla Login
-import com.example.sistemasgc.ui.screen.RegisterScreenVm // Pantalla Registro
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Modifier
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import com.example.sistemasgc.ui.components.AppDrawer
+import com.example.sistemasgc.ui.components.AppTopBar
+import com.example.sistemasgc.ui.components.defaultDrawerItems
+import com.example.sistemasgc.ui.screen.*
 import com.example.sistemasgc.ui.viewmodel.AuthViewModel
+import kotlinx.coroutines.launch
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+@Composable
+fun AppNavGraph(
+    navController: NavHostController,
+    authViewModel: AuthViewModel
+) {
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
 
-@Composable // Gráfico de navegación + Drawer + Scaffold
-fun AppNavGraph(navController: NavHostController,
-                authViewModel: AuthViewModel        // <-- 1.- NUEVO: recibimos el VM inyectado desde MainActivity
-) { // Recibe el controlador
+    // 👇 TOMAMOS EL ESTADO DE LOGIN DESDE EL VM (ajusta al nombre real de tu Flow/State)
+    val isLoggedIn = authViewModel.isLoggedIn.collectAsStateWithLifecycle(initialValue = false).value
 
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed) // Estado del drawer
-    val scope = rememberCoroutineScope() // Necesario para abrir/cerrar drawer
+    val go: (String) -> Unit = { route ->
+        navController.navigate(route) { launchSingleTop = true }
+    }
 
-    // Helpers de navegación (reutilizamos en topbar/drawer/botones)
-    val goHome: () -> Unit    = { navController.navigate(Route.Home.path) }    // Ir a Home
-    val goLogin: () -> Unit   = { navController.navigate(Route.Login.path) }   // Ir a Login
-    val goRegister: () -> Unit = { navController.navigate(Route.Register.path) } // Ir a Registro
+    val goHome       = { go(Route.Home.path) }
+    val goHome2      = { go(Route.Home2.path) }
+    val goLogin      = { go(Route.Login.path) }
+    val goRegister   = { go(Route.Register.path) }
+    val goProductos  = { go(Route.Productos.path) }
+    val goCategorias = { go(Route.Categorias.path) }
+    val goProveedores= { go(Route.Proveedores.path) }
+    val goCompras    = { go(Route.Compras.path) }
 
-    ModalNavigationDrawer( // Capa superior con drawer lateral
-        drawerState = drawerState, // Estado del drawer
-        drawerContent = { // Contenido del drawer (menú)
-            AppDrawer( // Nuestro componente Drawer
-                currentRoute = null, // Puedes pasar navController.currentBackStackEntry?.destination?.route
-                items = defaultDrawerItems( // Lista estándar
-                    onHome = {
-                        scope.launch { drawerState.close() } // Cierra drawer
-                        goHome() // Navega a Home
-                    },
-                    onLogin = {
-                        scope.launch { drawerState.close() } // Cierra drawer
-                        goLogin() // Navega a Login
-                    },
-                    onRegister = {
-                        scope.launch { drawerState.close() } // Cierra drawer
-                        goRegister() // Navega a Registro
-                    }
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            // 👇 Cambiamos el contenido del Drawer según login
+            if (!isLoggedIn) {
+                AppDrawer(
+                    currentRoute = navController.currentBackStackEntry?.destination?.route,
+                    items = defaultDrawerItems(
+                        onHome = { scope.launch { drawerState.close() }; goHome() },
+                        onLogin = { scope.launch { drawerState.close() }; goLogin() },
+                        onRegister = { scope.launch { drawerState.close() }; goRegister() }
+                    )
                 )
-            )
-        }
-    ) {
-        Scaffold( // Estructura base de pantalla
-            topBar = { // Barra superior con íconos/menú
-                AppTopBar(
-                    onOpenDrawer = { scope.launch { drawerState.open() } }, // Abre drawer
-                    onHome = goHome,     // Botón Home
-                    onLogin = goLogin,   // Botón Login
-                    onRegister = goRegister // Botón Registro
+            } else {
+                // 🔁 Necesitas extender tu defaultDrawerItems o crear otro helper
+                AppDrawer(
+                    currentRoute = navController.currentBackStackEntry?.destination?.route,
+                    items = defaultDrawerItems(
+                        onHome = { scope.launch { drawerState.close() }; goHome2() },
+                        onLogin = null,      // no mostrar
+                        onRegister = null,   // no mostrar
+                        // 👇 Extiende tu helper para aceptar estas rutas internas
+                        onProductos = { scope.launch { drawerState.close() }; goProductos() },
+                        onProveedores = { scope.launch { drawerState.close() }; goProveedores() },
+                        onCompras = { scope.launch { drawerState.close() }; goCompras() },
+                        onCategorias = { scope.launch { drawerState.close() }; goCategorias() }
+                    )
                 )
             }
-        ) { innerPadding -> // Padding que evita solapar contenido
-            NavHost( // Contenedor de destinos navegables
-                navController = navController, // Controlador
-                startDestination = Route.Home.path, // Inicio: Home
-                modifier = Modifier.padding(innerPadding) // Respeta topBar
+        }
+    ) {
+        Scaffold(
+            topBar = {
+                AppTopBar(
+                    onOpenDrawer = { scope.launch { drawerState.open() } },
+                    onHome = if (isLoggedIn) goHome2 else goHome,
+
+                    onLogin = { if (!isLoggedIn) goLogin() },
+                    onRegister = { if (!isLoggedIn) goRegister() },
+
+                    isLoggedIn = isLoggedIn,
+                    onProductos = if (isLoggedIn) goProductos else null,
+                    onProveedores = if (isLoggedIn) goProveedores else null,
+                    onCompras = if (isLoggedIn) goCompras else null
+                )
+            }
+        ) { innerPadding ->
+            NavHost(
+                navController = navController,
+                startDestination = if (isLoggedIn) Route.Home2.path else Route.Home.path,
+                modifier = Modifier.padding(innerPadding)
             ) {
-                composable(Route.Home.path) { // Destino Home
+                composable(Route.Home.path) {
                     HomeScreen(
-                        onGoLogin = goLogin,     // Botón para ir a Login
-                        onGoRegister = goRegister // Botón para ir a Registro
+                        onGoLogin = goLogin,
+                        onGoRegister = goRegister
                     )
                 }
-                composable(Route.Login.path) { // Destino Login
-                    //1 modificamos el acceso a la pagina
-                    // Usamos la versión con ViewModel (LoginScreenVm) para formularios/validación en tiempo real
+                composable(Route.Home2.path) {
+                    HomeScreen2(
+                        onGoLogin = goLogin,          // opcional
+                        onGoRegister = goRegister,    // opcional
+                        onGoProveedores = goProveedores,
+                        onGoProductos = goProductos,
+                        onGoCompras = goCompras
+                    )
+                }
+                composable(Route.Login.path) {
                     LoginScreenVm(
-                        vm = authViewModel,            // <-- NUEVO: pasamos VM inyectado
-                        onLoginOkNavigateHome = goHome,            // Si el VM marca success=true, navegamos a Home
-                        onGoRegister = goRegister                  // Enlace para ir a la pantalla de Registro
+                        vm = authViewModel,
+                        onLoginOkNavigateHome = {
+                            navController.navigate(Route.Home2.path) {
+                                popUpTo(Route.Home.path) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        },
+                        onGoRegister = goRegister
                     )
                 }
-                composable(Route.Register.path) { // Destino Registro
-                    //2 modificamos el acceso a la pagina
-                    // Usamos la versión con ViewModel (RegisterScreenVm) para formularios/validación en tiempo real
+                composable(Route.Register.path) {
                     RegisterScreenVm(
-                        vm = authViewModel,            // <-- NUEVO: pasamos VM inyectado
-                        onRegisteredNavigateLogin = goLogin,       // Si el VM marca success=true, volvemos a Login
-                        onGoLogin = goLogin                        // Botón alternativo para ir a Login
+                        vm = authViewModel,
+                        onRegisteredNavigateLogin = {
+                            navController.navigate(Route.Login.path) {
+                                popUpTo(Route.Register.path) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        },
+                        onGoLogin = goLogin
                     )
                 }
+                composable(Route.Productos.path) {
+                    ProductosScreen(
+                        onSearch = { },
+                        onAddNewProduct = { }
+                    )
+                }
+                composable(Route.Categorias.path) {
+                    CategoriasScreen(
+                        onAddCategory = { _, _, _ -> }
+                    )
+                }
+                composable(Route.Proveedores.path) { ProveedoresScreen() }
+                composable(Route.Compras.path)     { ComprasScreen() }
             }
         }
     }

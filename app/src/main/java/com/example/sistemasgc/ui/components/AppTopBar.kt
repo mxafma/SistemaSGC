@@ -17,66 +17,75 @@ import androidx.compose.material3.Text // Texto
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.* // remember / mutableStateOf
 import androidx.compose.ui.text.style.TextOverflow
-
+// AppTopBar.kt
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable // Composable reutilizable: barra superior
+@Composable
 fun AppTopBar(
-    onOpenDrawer: () -> Unit, // Abre el drawer (hamburguesa)
-    onHome: () -> Unit,       // Navega a Home
-    onLogin: () -> Unit,      // Navega a Login
-    onRegister: () -> Unit    // Navega a Registro
+    onOpenDrawer: () -> Unit,
+    onHome: () -> Unit,
+    onLogin: () -> Unit,
+    onRegister: () -> Unit,
+    // 👇 NUEVO
+    isLoggedIn: Boolean,
+    onProductos: (() -> Unit)? = null,
+    onProveedores: (() -> Unit)? = null,
+    onCompras: (() -> Unit)? = null,
 ) {
-    //lo que hace es crear una variable de estado recordada que le dice a la interfaz
-    // si el menú desplegable de 3 puntitos debe estar visible (true) o oculto (false).
-    var showMenu by remember { mutableStateOf(false) } // Estado del menú overflow
+    var showMenu by remember { mutableStateOf(false) }
 
-    CenterAlignedTopAppBar( // Barra alineada al centro
+    CenterAlignedTopAppBar(
         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
             containerColor = MaterialTheme.colorScheme.primary
         ),
-        title = { // Slot del título
+        title = {
             Text(
-                text = "Demo Navegación Compose", // Título visible
-                style = MaterialTheme.typography.titleLarge, // Estilo grande
-                maxLines = 1,              // asegura una sola línea Int.MAX_VALUE   // permite varias líneas
-                overflow = TextOverflow.Ellipsis // agrega "..." si no cabe
-
+                text = "Demo Navegación Compose",
+                style = MaterialTheme.typography.titleLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         },
-        navigationIcon = { // Ícono a la izquierda (hamburguesa)
-            IconButton(onClick = onOpenDrawer) { // Al presionar, abre drawer
-                Icon(imageVector = Icons.Filled.Menu, contentDescription = "Menú") // Ícono
+        navigationIcon = {
+            IconButton(onClick = onOpenDrawer) {
+                Icon(Icons.Filled.Menu, contentDescription = "Menú")
             }
         },
-        actions = { // Acciones a la derecha (íconos + overflow)
-            IconButton(onClick = onHome) { // Ir a Home
-                Icon(Icons.Filled.Home, contentDescription = "Home") // Ícono Home
+        actions = {
+            // Siempre Home
+            IconButton(onClick = onHome) {
+                Icon(Icons.Filled.Home, contentDescription = "Home")
             }
-            IconButton(onClick = onLogin) { // Ir a Login
-                Icon(Icons.Filled.AccountCircle, contentDescription = "Login") // Ícono Login
-            }
-            IconButton(onClick = onRegister) { // Ir a Registro
-                Icon(Icons.Filled.Person, contentDescription = "Registro") // Ícono Registro
-            }
-            IconButton(onClick = { showMenu = true }) { // Abre menú overflow
-                Icon(Icons.Filled.MoreVert, contentDescription = "Más") // Ícono 3 puntitos
-            }
-            DropdownMenu(
-                expanded = showMenu, // Si está abierto
-                onDismissRequest = { showMenu = false } // Cierra al tocar fuera
-            ) {
-                DropdownMenuItem( // Opción Home
-                    text = { Text("Home") }, // Texto opción
-                    onClick = { showMenu = false; onHome() } // Navega y cierra
-                )
-                DropdownMenuItem( // Opción Login
-                    text = { Text("Login") },
-                    onClick = { showMenu = false; onLogin() }
-                )
-                DropdownMenuItem( // Opción Registro
-                    text = { Text("Registro") },
-                    onClick = { showMenu = false; onRegister() }
-                )
+
+            if (!isLoggedIn) {
+                // 👇 Solo cuando NO estás logeado
+                IconButton(onClick = onLogin) {
+                    Icon(Icons.Filled.AccountCircle, contentDescription = "Login")
+                }
+                IconButton(onClick = onRegister) {
+                    Icon(Icons.Filled.Person, contentDescription = "Registro")
+                }
+            } else {
+                // 👇 Cuando SÍ estás logeado, mostramos accesos de negocio en overflow
+                IconButton(onClick = { showMenu = true }) {
+                    Icon(Icons.Filled.MoreVert, contentDescription = "Más")
+                }
+                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Productos") },
+                        onClick = { showMenu = false; onProductos?.invoke() },
+                        enabled = onProductos != null
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Proveedores") },
+                        onClick = { showMenu = false; onProveedores?.invoke() },
+                        enabled = onProveedores != null
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Compras") },
+                        onClick = { showMenu = false; onCompras?.invoke() },
+                        enabled = onCompras != null
+                    )
+                }
             }
         }
     )
