@@ -63,20 +63,16 @@ fun AppRoot() { // Raíz de la app para separar responsabilidades (se conserva)
     //   Esto reemplaza cualquier uso anterior de listas en memoria (USERS).
 
     // ====== TU NAVEGACIÓN ORIGINAL ======
-    val navController = rememberNavController() // Controlador de navegación (igual que antes)
-    MaterialTheme { // Provee colores/tipografías Material 3 (igual que antes)
-        Surface(color = MaterialTheme.colorScheme.background) { // Fondo general (igual que antes)
+    val navController = rememberNavController() // Controlador de navegación
+    MaterialTheme { // Provee colores/tipografías Material 3
+        Surface(color = MaterialTheme.colorScheme.background) { // Fondo general
 
-            // ====== MOD: pasamos el AuthViewModel a tu NavGraph ======
-            // Si tu AppNavGraph ya recibía el VM o lo creaba adentro, lo mejor ahora es PASARLO
-            // para que toda la app use la MISMA instancia que acabamos de inyectar.
+
             AppNavGraph(
                 navController = navController,
                 authViewModel = authViewModel // <-- NUEVO parámetro
             )
-            // NOTA: Si tu AppNavGraph no tiene este parámetro aún, basta con agregarlo:
-            // fun AppNavGraph(navController: NavHostController, authViewModel: AuthViewModel) { ... }
-            // y luego pasar ese authViewModel a las pantallas Login/Register donde se use.
+
         }
     }
 }
