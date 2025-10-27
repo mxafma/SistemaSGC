@@ -42,6 +42,7 @@ fun AppNavGraph(
     val goProveedores= { go(Route.Proveedores.path) }
     val goAgregarProveedores = { go(Route.AgregarProveedor.path) }
     val goCompras    = { go(Route.Compras.path) }
+    val goDetallesCompras = {go(Route.DetallesCompras.path)}
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -163,7 +164,24 @@ fun AppNavGraph(
                     )
                 }
 
-                composable(Route.Compras.path)     { ComprasScreen() }
+                composable(Route.Compras.path) {
+                    ComprasScreen(
+                        onDetallesCompras = goDetallesCompras,
+                        onNuevaCompra = { proveedor, formaPago, fecha ->
+                            println("Nueva compra: $proveedor, $formaPago, $fecha")
+                        },
+                        onSearch = { query ->
+                            println("Buscando: $query")
+                        }
+                    )
+                }
+
+                composable(Route.DetallesCompras.path) {
+                    DetallesComprasScreen(
+                        // Aquí defines qué hacer cuando quieras volver
+                        onBack = { navController.popBackStack() }
+                    )
+                }
             }
         }
     }

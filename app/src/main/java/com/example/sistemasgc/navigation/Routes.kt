@@ -14,4 +14,6 @@ sealed class Route(val path: String) {
     data object Compras     : Route("compras")
 
     data object AgregarProveedor: Route("Agregar_Proveedor")
+
+    data object DetallesCompras: Route("Detalle_Compras")
 }

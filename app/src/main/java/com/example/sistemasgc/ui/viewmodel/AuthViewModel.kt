@@ -210,7 +210,7 @@ class AuthViewModel(
         _proveedor.update { it.copy(success = false, errorMsg = null) }
     }
 
-    // --------- REGISTRO ---------
+    // --------- Proveedor ---------
 
     fun onNameChange(value: String) {
         val filtered = value.filter { it.isLetter() || it.isWhitespace() }
