@@ -40,6 +40,7 @@ fun AppNavGraph(
     val goProductos  = { go(Route.Productos.path) }
     val goCategorias = { go(Route.Categorias.path) }
     val goProveedores= { go(Route.Proveedores.path) }
+    val goAgregarProveedores= { go(Route.AgregarProveedor.path)}
     val goCompras    = { go(Route.Compras.path) }
 
     ModalNavigationDrawer(
@@ -144,7 +145,13 @@ fun AppNavGraph(
                         onAddCategory = { _, _, _ -> }
                     )
                 }
-                composable(Route.Proveedores.path) { ProveedoresScreen() }
+                composable(Route.Proveedores.path) {
+                    ProveedoresScreen(
+                        onSearch = { },
+                        onGoagregarProveedores = goAgregarProveedores
+
+                    )
+                }
                 composable(Route.Compras.path)     { ComprasScreen() }
             }
         }
