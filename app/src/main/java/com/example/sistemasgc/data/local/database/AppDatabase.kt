@@ -7,6 +7,8 @@ import androidx.room.RoomDatabase                               // Clase base de
 import androidx.sqlite.db.SupportSQLiteDatabase                 // Tipo del callback onCreate
 import com.example.sistemasgc.data.local.user.UserDao         // Import del DAO de usuario
 import com.example.sistemasgc.data.local.user.UserEntity      // Import de la entidad de usuario
+import com.example.sistemasgc.data.local.Proveedor.ProveedorDao
+import com.example.sistemasgc.data.local.Proveedor.ProveedorEntity
 import kotlinx.coroutines.CoroutineScope                        // Para corrutinas en callback
 import kotlinx.coroutines.Dispatchers                           // Dispatcher IO
 import kotlinx.coroutines.launch                                // Lanzar corrutina
@@ -14,14 +16,18 @@ import kotlinx.coroutines.launch                                // Lanzar corrut
 // @Database registra entidades y versión del esquema.
 // version = 1: como es primera inclusión con teléfono, partimos en 1.
 @Database(
-    entities = [UserEntity::class],
-    version = 1,
+    entities = [UserEntity::class, ProveedorEntity::class],
+    version = 2,
     exportSchema = true // Mantener true para inspección de esquema (útil en educación)
 )
 abstract class AppDatabase : RoomDatabase() {
 
     // Exponemos el DAO de usuarios
     abstract fun userDao(): UserDao
+
+    abstract fun proveedorDao(): ProveedorDao
+
+
 
     companion object {
         @Volatile
@@ -44,6 +50,7 @@ abstract class AppDatabase : RoomDatabase() {
                             // Lanzamos una corrutina en IO para insertar datos iniciales
                             CoroutineScope(Dispatchers.IO).launch {
                                 val dao = getInstance(context).userDao()
+                                val proveedorDao = getInstance(context).proveedorDao()
 
                                 // Precarga de usuarios (incluye teléfono)
                                 // Reemplaza aquí por los mismitos datos que usas en Login/Register.
@@ -62,9 +69,30 @@ abstract class AppDatabase : RoomDatabase() {
                                     )
                                 )
 
+                                val proveedorSeed = listOf(
+                                    ProveedorEntity(
+                                        Pname = "Proveedor A",
+                                        Prut = "12345678-9",
+                                        Pphone = "+56933333333",
+                                        Pemail = "proveedora@empresa.cl",
+                                        Pdireccion = "Calle 123"
+                                    ),
+                                    ProveedorEntity(
+                                        Pname = "Proveedor B",
+                                        Prut = "98765432-1",
+                                        Pphone = "+56944444444",
+                                        Pemail = "proveedorb@empresa.cl",
+                                        Pdireccion = "Avenida 456"
+                                    )
+                                )
+
                                 // Inserta seed sólo si la tabla está vacía
                                 if (dao.count() == 0) {
                                     seed.forEach { dao.insert(it) }
+                                }
+
+                                if (proveedorDao.count() == 0) {
+                                    proveedorSeed.forEach { proveedorDao.insert(it) }
                                 }
                             }
                         }

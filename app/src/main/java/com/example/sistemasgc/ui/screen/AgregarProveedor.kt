@@ -1,284 +1,267 @@
 package com.example.sistemasgc.ui.screen
 
 import android.content.res.Configuration
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.sistemasgc.ui.viewmodel.AuthViewModel
+import androidx.compose.runtime.getValue
 
-@Composable // Pantalla Registro conectada al VM
-fun AgregarProveedorScreen(
-    vm: AuthViewModel,                            // MOD: recibimos el VM desde NavGraph
-    onRegisteredNavigateLogin: () -> Unit,                   // Navega a Login si success=true     // Botón alternativo para ir a Login
+@Composable
+fun AgregarProveedorScreenVM(
+    vm: AuthViewModel = viewModel(), // O la forma en que inyectes tu ViewModel
+    onProveedorAgregado: () -> Unit, // ← CAMBIÉ ESTO: navega de vuelta a proveedores
 ) {
+    val state by vm.proveedor.collectAsStateWithLifecycle() // ← ESTO ESTÁ BIEN con StateFlow
 
-    val state by vm.register.collectAsStateWithLifecycle()   // Observa estado en tiempo real
-
-    if (state.success) {                                     // Si registro fue exitoso
-        vm.clearRegisterResult()                             // Limpia banderas
-        onRegisteredNavigateLogin()                          // Navega a Login
+    // Cuando el proveedor se agrega exitosamente, vuelve a la pantalla de proveedores
+    LaunchedEffect(state.success) {
+        if (state.success) {
+            vm.clearProveedorResult()
+            onProveedorAgregado() // ← Vuelve a proveedores
+        }
     }
 
-    AgregarProveedorScreen(                                   // Delegamos UI presentacional
-        name = state.name,                                   // 1) Nombre
-        rut = state.rut,                                     // 2) Rut
-        phone = state.phone,                                 // 3) Teléfono
-        email = state.email,                                 //2) Email
-        direccion = state.direccion,                         // 4) Password
-        confirm = state.confirm,                             // 5) Confirmación
+    AgregarProveedorScreen(
+        name = state.name,
+        rut = state.rut,
+        phone = state.phone,
+        email = state.email,
+        direccion = state.direccion,
 
-        nameError = state.nameError,                         // Errores por campo
+        nameError = state.nameError,
         rutError = state.rutError,
         phoneError = state.phoneError,
         emailError = state.emailError,
         direccionError = state.direccionError,
-        confirmError = state.confirmError,
 
-        canSubmit = state.canSubmit,                         // Habilitar "Registrar"
-        isSubmitting = state.isSubmitting,                   // Flag de carga
-        errorMsg = state.errorMsg,                           // Error global (duplicado)
+        canSubmit = state.canSubmit,
+        isSubmitting = state.isSubmitting,
+        errorMsg = state.errorMsg,
 
-        onNameChange = vm::onNameChange,                     // Handlers
-        onEmailChange = vm::onRegisterEmailChange,
-        onPhoneChange = vm::onPhoneChange,
-        onPassChange = vm::onRegisterPassChange,
-        onConfirmChange = vm::onConfirmChange,
-
-        onSubmit = vm::submitRegister,                       // Acción Registrar
+        onNameChange = vm::onProveedorNameChange,
+        onRutChange = vm::onProveedorRutChange,
+        onPhoneChange = vm::onProveedorPhoneChange,
+        onEmailChange = vm::onProveedorEmailChange,
+        onDireccionChange = vm::onProveedorDireccionChange,
+        onSubmit = vm::submitProveedor
     )
 }
 
-
-//2 ajustamos el private y parametros
-@Composable // Pantalla Registro (solo navegación)
+@Composable
 private fun AgregarProveedorScreen(
-    name: String,                                            // 1) Nombre (solo letras/espacios)
+    name: String,
     rut: String,
-    email: String,                                           // 2) Email
-    phone: String,                                           // 3) Teléfono (solo números)
-    pass: String,                                            // 4) Password (segura)
-    confirm: String,                                         // 5) Confirmación
-    nameError: String?,                                      // Errores
-    emailError: String?,
+    phone: String,
+    email: String,
+    direccion: String,
+
+    nameError: String?,
+    rutError: String?,
     phoneError: String?,
-    passError: String?,
-    confirmError: String?,
-    canSubmit: Boolean,                                      // Habilitar botón
-    isSubmitting: Boolean,                                   // Flag de carga
-    errorMsg: String?,                                       // Error global (duplicado)
-    onNameChange: (String) -> Unit,                          // Handler nombre
-    onEmailChange: (String) -> Unit,                         // Handler email
-    onPhoneChange: (String) -> Unit,                         // Handler teléfono
-    onPassChange: (String) -> Unit,                          // Handler password
-    onConfirmChange: (String) -> Unit,                       // Handler confirmación
-    onSubmit: () -> Unit,                                    // Acción Registrar
-    onGoLogin: () -> Unit                                    // Ir a Login
+    emailError: String?,
+    direccionError: String?,
+
+    canSubmit: Boolean,
+    isSubmitting: Boolean,
+    errorMsg: String?,
+
+    onNameChange: (String) -> Unit,
+    onRutChange: (String) -> Unit,
+    onPhoneChange: (String) -> Unit,
+    onEmailChange: (String) -> Unit,
+    onDireccionChange: (String) -> Unit,
+    onSubmit: () -> Unit,
 ) {
-    val bg = MaterialTheme.colorScheme.background // fondo blanco
-    //4 Anexamos las variables para mostrar y ocultar el password
-    var showPass by remember { mutableStateOf(false) }        // Mostrar/ocultar password
-    var showConfirm by remember { mutableStateOf(false) }     // Mostrar/ocultar confirm
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize() // Ocupa todo
-            .background(bg) // Fondo
-            .padding(16.dp), // Margen
-        contentAlignment = Alignment.Center // Centro
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
     ) {
-        // 5 modificamos el parametro de la columna
-        Column(modifier = Modifier.fillMaxWidth()) { // Estructura vertical
-            Text(
-                text = "Registro",
-                style = MaterialTheme.typography.headlineSmall // Título
-            )
-            Spacer(Modifier.height(12.dp)) // Separación
-
-            //6 eliminamos los elementos que van de aqui y agregamos los nuevos del formulario
-            // ---------- NOMBRE (solo letras/espacios) ----------
-            OutlinedTextField(
-                value = name,                                // Valor actual
-                onValueChange = onNameChange,                // Notifica VM (filtra y valida)
-                label = { Text("Nombre") },                  // Etiqueta
-                singleLine = true,                           // Una línea
-                isError = nameError != null,                 // Marca error
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Text         // Teclado de texto
-                ),
-                modifier = Modifier.fillMaxWidth()
-            )
-            if (nameError != null) {                         // Muestra error
-                Text(nameError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
-            }
-
-            Spacer(Modifier.height(8.dp))                    // Espacio
-
-            // ---------- EMAIL ----------
-            OutlinedTextField(
-                value = email,                               // Valor actual
-                onValueChange = onEmailChange,               // Notifica VM (valida)
-                label = { Text("Email") },                   // Etiqueta
-                singleLine = true,                           // Una línea
-                isError = emailError != null,                // Marca error
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email        // Teclado de email
-                ),
-                modifier = Modifier.fillMaxWidth()
-            )
-            if (emailError != null) {                        // Muestra error
-                Text(emailError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
-            }
-
-            Spacer(Modifier.height(8.dp))                    // Espacio
-
-            // ---------- TELÉFONO (solo números). El VM ya filtra a dígitos ----------
-            OutlinedTextField(
-                value = phone,                               // Valor actual (solo dígitos)
-                onValueChange = onPhoneChange,               // Notifica VM (filtra y valida)
-                label = { Text("Teléfono") },                // Etiqueta
-                singleLine = true,                           // Una línea
-                isError = phoneError != null,                // Marca error
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Number       // Teclado numérico
-                ),
-                modifier = Modifier.fillMaxWidth()
-            )
-            if (phoneError != null) {                        // Muestra error
-                Text(phoneError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
-            }
-
-            Spacer(Modifier.height(8.dp))                    // Espacio
-
-            // ---------- PASSWORD (segura) ----------
-            OutlinedTextField(
-                value = pass,                                // Valor actual
-                onValueChange = onPassChange,                // Notifica VM (valida fuerza)
-                label = { Text("Contraseña") },              // Etiqueta
-                singleLine = true,                           // Una línea
-                isError = passError != null,                 // Marca error
-                visualTransformation = if (showPass) VisualTransformation.None else PasswordVisualTransformation(), // Oculta/mostrar
-                trailingIcon = {                             // Icono para alternar visibilidad
-                    IconButton(onClick = { showPass = !showPass }) {
-                        Icon(
-                            imageVector = if (showPass) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                            contentDescription = if (showPass) "Ocultar contraseña" else "Mostrar contraseña"
-                        )
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-            if (passError != null) {                         // Muestra error
-                Text(passError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
-            }
-
-            Spacer(Modifier.height(8.dp))                    // Espacio
-
-            // ---------- CONFIRMAR PASSWORD ----------
-            OutlinedTextField(
-                value = confirm,                             // Valor actual
-                onValueChange = onConfirmChange,             // Notifica VM (valida igualdad)
-                label = { Text("Confirmar contraseña") },    // Etiqueta
-                singleLine = true,                           // Una línea
-                isError = confirmError != null,              // Marca error
-                visualTransformation = if (showConfirm) VisualTransformation.None else PasswordVisualTransformation(), // Oculta/mostrar
-                trailingIcon = {                             // Icono para alternar visibilidad
-                    IconButton(onClick = { showConfirm = !showConfirm }) {
-                        Icon(
-                            imageVector = if (showConfirm) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                            contentDescription = if (showConfirm) "Ocultar confirmación" else "Mostrar confirmación"
-                        )
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-            if (confirmError != null) {                      // Muestra error
-                Text(confirmError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
-            }
-
-            Spacer(Modifier.height(16.dp))                   // Espacio
-
-            // ---------- BOTÓN REGISTRAR ----------
-            Button(
-                onClick = onSubmit,                          // Intenta registrar (inserta en la colección)
-                enabled = canSubmit && !isSubmitting,        // Solo si todo es válido y no cargando
-                modifier = Modifier.fillMaxWidth()
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            contentAlignment = Alignment.TopCenter // ← Alineado arriba
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (isSubmitting) {                          // Muestra loading mientras “procesa”
-                    CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Creando cuenta...")
-                } else {
-                    Text("Registrar")
+                Text(
+                    text = "Agregar Proveedor",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                // Campo Nombre
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = onNameChange,
+                    label = { Text("Nombre del Proveedor") },
+                    singleLine = true,
+                    isError = nameError != null,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (nameError != null) {
+                    Text(
+                        nameError,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
-            }
 
-            if (errorMsg != null) {                          // Error global (ej: usuario duplicado)
-                Spacer(Modifier.height(8.dp))
-                Text(errorMsg, color = MaterialTheme.colorScheme.error)
-            }
+                // Campo RUT
+                OutlinedTextField(
+                    value = rut,
+                    onValueChange = onRutChange,
+                    label = { Text("RUT") },
+                    singleLine = true,
+                    isError = rutError != null,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (rutError != null) {
+                    Text(
+                        rutError,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
 
-            Spacer(Modifier.height(12.dp))                   // Espacio
+                // Campo Teléfono
+                OutlinedTextField(
+                    value = phone,
+                    onValueChange = onPhoneChange,
+                    label = { Text("Teléfono") },
+                    singleLine = true,
+                    isError = phoneError != null,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (phoneError != null) {
+                    Text(
+                        phoneError,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
 
-            // ---------- BOTÓN IR A LOGIN ----------
-            OutlinedButton(onClick = onGoLogin, modifier = Modifier.fillMaxWidth()) {
-                Text("Ir a Login")
+                // Campo Email
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = onEmailChange,
+                    label = { Text("Email") },
+                    singleLine = true,
+                    isError = emailError != null,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (emailError != null) {
+                    Text(
+                        emailError,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                // Campo Dirección
+                OutlinedTextField(
+                    value = direccion,
+                    onValueChange = onDireccionChange,
+                    label = { Text("Dirección") },
+                    singleLine = true,
+                    isError = direccionError != null,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (direccionError != null) {
+                    Text(
+                        direccionError,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // Botón Agregar
+                Button(
+                    onClick = onSubmit,
+                    enabled = canSubmit && !isSubmitting,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (isSubmitting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Agregando proveedor...")
+                    } else {
+                        Text("Agregar Proveedor")
+                    }
+                }
+
+                if (errorMsg != null) {
+                    Text(
+                        errorMsg,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
+                Spacer(Modifier.height(12.dp))
+
             }
         }
     }
 }
-@Preview(
-    name = "Register – Light",
-    showBackground = true,
-    showSystemUi = true
-)
-@Preview(
-    name = "Register – Dark",
-    showBackground = true,
-    showSystemUi = true,
-    uiMode = Configuration.UI_MODE_NIGHT_YES
-)
+
+@Preview(name = "Agregar Proveedor – Light", showBackground = true, showSystemUi = true)
+@Preview(name = "Agregar Proveedor – Dark", showBackground = true, showSystemUi = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
-private fun RegisterScreenPreview() {
-    // Si tienes tu propio tema, reemplaza MaterialTheme { ... } por tu tema (p.ej. SistemaSGCTheme)
+private fun AgregarProveedorScreenPreview() {
     MaterialTheme {
-        RegisterScreen(
-            name = "Matías Arauz",
-            email = "matias@example.com",
-            phone = "987654321",
-            pass = "ClaveSegura123",
-            confirm = "ClaveSegura123",
+        AgregarProveedorScreen(
+            name = "Proveedor Ejemplo",
+            rut = "12345678-9",
+            phone = "912345678",
+            email = "proveedor@ejemplo.cl",
+            direccion = "Calle Principal 123",
+
             nameError = null,
-            emailError = null,
+            rutError = null,
             phoneError = null,
-            passError = null,
-            confirmError = null,
+            emailError = null,
+            direccionError = null,
+
             canSubmit = true,
             isSubmitting = false,
             errorMsg = null,
+
             onNameChange = {},
-            onEmailChange = {},
+            onRutChange = {},
             onPhoneChange = {},
-            onPassChange = {},
-            onConfirmChange = {},
-            onSubmit = {},
-            onGoLogin = {}
+            onEmailChange = {},
+            onDireccionChange = {},
+            onSubmit = {}
         )
     }
 }

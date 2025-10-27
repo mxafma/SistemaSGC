@@ -40,7 +40,7 @@ fun AppNavGraph(
     val goProductos  = { go(Route.Productos.path) }
     val goCategorias = { go(Route.Categorias.path) }
     val goProveedores= { go(Route.Proveedores.path) }
-    val goAgregarProveedores= { go(Route.AgregarProveedor.path)}
+    val goAgregarProveedores = { go(Route.AgregarProveedor.path) }
     val goCompras    = { go(Route.Compras.path) }
 
     ModalNavigationDrawer(
@@ -152,6 +152,17 @@ fun AppNavGraph(
 
                     )
                 }
+
+                composable(Route.AgregarProveedor.path) {
+                    AgregarProveedorScreenVM(
+                        vm = authViewModel, // ← Pasar el ViewModel
+                        onProveedorAgregado = {
+                            // Vuelve automáticamente a proveedores cuando se agrega exitosamente
+                            navController.popBackStack()
+                        }
+                    )
+                }
+
                 composable(Route.Compras.path)     { ComprasScreen() }
             }
         }

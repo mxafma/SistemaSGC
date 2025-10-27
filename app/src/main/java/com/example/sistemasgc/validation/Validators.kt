@@ -41,3 +41,15 @@ fun validateConfirm(pass: String, confirm: String): String? {          // Confir
     if (confirm.isBlank()) return "Confirma tu contraseña"             // No vacío
     return if (pass != confirm) "Las contraseñas no coinciden" else null // Deben ser iguales
 }
+
+fun validateRut(rut: String): String? {
+    return if (rut.isBlank()) "El RUT es obligatorio"
+    else if (rut.length < 8) "RUT muy corto"
+    else null
+}
+
+fun validateDireccion(direccion: String): String? {
+    return if (direccion.isBlank()) "La dirección es obligatoria"
+    else if (direccion.length < 5) "Dirección muy corta"
+    else null
+}

@@ -48,7 +48,12 @@ fun AppRoot() { // Raíz de la app para separar responsabilidades (se conserva)
     val userDao = db.userDao()
     // ^ Obtenemos el DAO de usuarios desde la DB.
 
-    val userRepository = UserRepository(userDao)
+    val proveedorDao = db.proveedorDao()
+
+    val userRepository = UserRepository(
+        userDao = userDao,
+        proveedorDao = proveedorDao // ← AGREGAR ESTE PARÁMETRO
+    )
     // ^ Repositorio que encapsula la lógica de login/registro contra Room.
 
     val authViewModel: AuthViewModel = viewModel(

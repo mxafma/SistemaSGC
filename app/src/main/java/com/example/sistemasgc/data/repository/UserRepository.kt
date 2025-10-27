@@ -2,10 +2,12 @@ package com.example.sistemasgc.data.repository
 
 import com.example.sistemasgc.data.local.user.UserDao       // DAO de usuario
 import com.example.sistemasgc.data.local.user.UserEntity    // Entidad de usuario
-
+import com.example.sistemasgc.data.local.Proveedor.ProveedorDao
+import com.example.sistemasgc.data.local.Proveedor.ProveedorEntity
 // Repositorio: orquesta reglas de negocio para login/registro sobre el DAO.
 class UserRepository(
-    private val userDao: UserDao // Inyección del DAO
+    private val userDao: UserDao, // Inyección del DAO
+    private val proveedorDao: ProveedorDao
 ) {
 
     // Login: busca por email y valida contraseña
@@ -33,5 +35,26 @@ class UserRepository(
             )
         )
         return Result.success(id)                                    // Devuelve ID generado
+    }
+
+    suspend fun proveedor(Pname: String, Prut: String, Pphone: String, Pemail: String, Pdireccion: String): Result<Long> {
+        val existeProveedor = proveedorDao.getByEmailP(Pemail) != null          // ¿Correo ya usado?
+        if (existeProveedor) {
+            return Result.failure(IllegalStateException("El correo ya está registrado"))
+        }
+        val id = proveedorDao.insert(
+            ProveedorEntity(
+                Pname = Pname,
+                Prut = Prut,
+                Pphone = Pphone,
+                Pemail = Pemail,
+                Pdireccion = Pdireccion
+            )
+        )
+        return Result.success(id)                                    // Devuelve ID generado
+    }
+
+    suspend fun obtenerTodosLosProveedores(): List<ProveedorEntity> {
+        return proveedorDao.getAllP()
     }
 }

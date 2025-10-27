@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 fun ProveedoresScreen(
     onSearch: (String) -> Unit,
     onGoagregarProveedores: () -> Unit
+
 ) {
     Surface(color = MaterialTheme.colorScheme.background) {
         Box(
