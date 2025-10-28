@@ -59,12 +59,7 @@ fun HomeScreen2(
 
                 Spacer(Modifier.height(24.dp))
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(onClick = onGoLogin) { Text("Login") }
-                    OutlinedButton(onClick = onGoRegister) { Text("Registro") }
-                }
+
             }
         }
     }
