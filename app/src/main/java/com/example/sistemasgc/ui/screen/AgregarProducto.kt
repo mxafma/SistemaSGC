@@ -12,7 +12,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun ProductosScreen(
+fun AgregarProductoScreen(
     onAddProduct: (String, String, String) -> Unit,
     onEditCategory: () -> Unit
 ) {
@@ -33,7 +33,7 @@ fun ProductosScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "Productos",
+                    text = "Agregar producto",
                     style = MaterialTheme.typography.headlineSmall,
                     textAlign = TextAlign.Center
                 )
@@ -94,20 +94,20 @@ fun ProductosScreen(
 /* =================== PREVIEWS =================== */
 
 @Preview(
-    name = "Productos – Light",
+    name = "AgregarProducto – Light",
     showBackground = true,
     showSystemUi = true
 )
 @Preview(
-    name = "Productos – Dark",
+    name = "AgregarProducto – Dark",
     showBackground = true,
     showSystemUi = true,
     uiMode = Configuration.UI_MODE_NIGHT_YES
 )
 @Composable
-private fun ProductosScreenPreview() {
+private fun AgregarProductoPreview() {
     MaterialTheme {
-        ProductosScreen(
+        AgregarProductoScreen(
             onAddProduct = { _, _, _ -> },
             onEditCategory = {}
         )

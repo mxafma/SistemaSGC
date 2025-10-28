@@ -11,6 +11,8 @@ import com.example.sistemasgc.domain.validation.*
 import com.example.sistemasgc.data.repository.UserRepository
 import com.example.sistemasgc.data.local.Proveedor.ProveedorEntity
 
+
+
 // ----------------- ESTADOS DE UI (observable con StateFlow) -----------------
 
 data class LoginUiState(
@@ -50,7 +52,6 @@ data class ProveedoresUiState(
     val email: String = "",
     val direccion: String = "",
 
-
     val nameError: String? = null,
     val rutError: String? = null,
     val phoneError: String? = null,
@@ -64,10 +65,39 @@ data class ProveedoresUiState(
 )
 
 
+data class ProductoUiState(
+    val nombre: String = "",
+    val id: String = "",
+    val categoria: String = "",
+
+    val nombreError: String? = null,
+    val idError: String? = null,
+    val categoriaError: String? = null,
+
+    val isSubmitting: Boolean = false,
+    val canSubmit: Boolean = false,
+    val success: Boolean = false,
+    val errorMsg: String? = null
+)
+data class CategoriaUiState(
+    val nombre: String = "",
+    val id: String = "",
+    val descripcion: String = "",
+
+    val nombreError: String? = null,
+    val idError: String? = null,
+    val descripcionError: String? = null,
+
+    val isSubmitting: Boolean = false,
+    val canSubmit: Boolean = false,
+    val success: Boolean = false,
+    val errorMsg: String? = null
+)
 
 class AuthViewModel(
     // Repositorio real (Room/SQLite o el que uses)
     private val repository: UserRepository
+
 ) : ViewModel() {
 
     // --------- NUEVO: estado global de sesión ---------
@@ -83,6 +113,15 @@ class AuthViewModel(
 
     private val _proveedor = MutableStateFlow(ProveedoresUiState())
     val proveedor: StateFlow<ProveedoresUiState> = _proveedor
+
+    // --------- NUEVO: Producto ---------
+    private val _producto = MutableStateFlow(ProductoUiState())
+    val producto: StateFlow<ProductoUiState> = _producto
+
+    // --------- Categorias ---------
+
+    private val _categoria = MutableStateFlow(CategoriaUiState())
+    val categoria: StateFlow<CategoriaUiState> = _categoria
 
     // --------- LOGIN ---------
 
@@ -137,7 +176,12 @@ class AuthViewModel(
 
     fun onProveedorNameChange(value: String) {
         val filtered = value.filter { it.isLetter() || it.isWhitespace() }
-        _proveedor.update { it.copy(name = filtered, nameError = validateNameLettersOnly(filtered)) }
+        _proveedor.update {
+            it.copy(
+                name = filtered,
+                nameError = validateNameLettersOnly(filtered)
+            )
+        }
         recomputeProveedorCanSubmit()
     }
 
@@ -148,7 +192,12 @@ class AuthViewModel(
 
     fun onProveedorPhoneChange(value: String) {
         val digitsOnly = value.filter { it.isDigit() }
-        _proveedor.update { it.copy(phone = digitsOnly, phoneError = validatePhoneDigitsOnly(digitsOnly)) }
+        _proveedor.update {
+            it.copy(
+                phone = digitsOnly,
+                phoneError = validatePhoneDigitsOnly(digitsOnly)
+            )
+        }
         recomputeProveedorCanSubmit()
     }
 
@@ -162,12 +211,17 @@ class AuthViewModel(
         recomputeProveedorCanSubmit()
     }
 
-
-
     private fun recomputeProveedorCanSubmit() {
         val s = _proveedor.value
-        val noErrors = listOf(s.nameError, s.rutError,  s.phoneError, s.emailError,  s.direccionError).all { it == null }
-        val filled = s.name.isNotBlank() && s.rut.isNotBlank() && s.phone.isNotBlank() && s.email.isNotBlank() && s.direccion.isNotBlank()
+        val noErrors = listOf(
+            s.nameError,
+            s.rutError,
+            s.phoneError,
+            s.emailError,
+            s.direccionError
+        ).all { it == null }
+        val filled =
+            s.name.isNotBlank() && s.rut.isNotBlank() && s.phone.isNotBlank() && s.email.isNotBlank() && s.direccion.isNotBlank()
         _proveedor.update { it.copy(canSubmit = noErrors && filled) }
     }
 
@@ -188,12 +242,10 @@ class AuthViewModel(
                 Pphone = s.phone.trim(),
                 Pemail = s.email.trim(),
                 Pdireccion = s.direccion.trim()
-
             )
 
             _proveedor.update {
                 if (result.isSuccess) {
-                    // Mantengo isLoggedIn = false para que tu flujo siga y navegue a Login
                     it.copy(isSubmitting = false, success = true, errorMsg = null)
                 } else {
                     it.copy(
@@ -210,7 +262,7 @@ class AuthViewModel(
         _proveedor.update { it.copy(success = false, errorMsg = null) }
     }
 
-    // --------- Proveedor ---------
+    // --------- REGISTER ---------
 
     fun onNameChange(value: String) {
         val filtered = value.filter { it.isLetter() || it.isWhitespace() }
@@ -225,7 +277,12 @@ class AuthViewModel(
 
     fun onPhoneChange(value: String) {
         val digitsOnly = value.filter { it.isDigit() }
-        _register.update { it.copy(phone = digitsOnly, phoneError = validatePhoneDigitsOnly(digitsOnly)) }
+        _register.update {
+            it.copy(
+                phone = digitsOnly,
+                phoneError = validatePhoneDigitsOnly(digitsOnly)
+            )
+        }
         recomputeRegisterCanSubmit()
     }
 
@@ -236,16 +293,26 @@ class AuthViewModel(
     }
 
     fun onConfirmChange(value: String) {
-        _register.update { it.copy(confirm = value, confirmError = validateConfirm(it.pass, value)) }
+        _register.update {
+            it.copy(
+                confirm = value,
+                confirmError = validateConfirm(it.pass, value)
+            )
+        }
         recomputeRegisterCanSubmit()
     }
 
-
-
     private fun recomputeRegisterCanSubmit() {
         val s = _register.value
-        val noErrors = listOf(s.nameError, s.emailError, s.phoneError, s.passError, s.confirmError).all { it == null }
-        val filled = s.name.isNotBlank() && s.email.isNotBlank() && s.phone.isNotBlank() && s.pass.isNotBlank() && s.confirm.isNotBlank()
+        val noErrors = listOf(
+            s.nameError,
+            s.emailError,
+            s.phoneError,
+            s.passError,
+            s.confirmError
+        ).all { it == null }
+        val filled =
+            s.name.isNotBlank() && s.email.isNotBlank() && s.phone.isNotBlank() && s.pass.isNotBlank() && s.confirm.isNotBlank()
         _register.update { it.copy(canSubmit = noErrors && filled) }
     }
 
@@ -265,7 +332,6 @@ class AuthViewModel(
 
             _register.update {
                 if (result.isSuccess) {
-                    // Mantengo isLoggedIn = false para que tu flujo siga y navegue a Login
                     it.copy(isSubmitting = false, success = true, errorMsg = null)
                 } else {
                     it.copy(
@@ -282,7 +348,83 @@ class AuthViewModel(
         _register.update { it.copy(success = false, errorMsg = null) }
     }
 
+    // --------- PRODUCTO ---------
 
+    fun onProductoNombreChange(value: String) {
+        _producto.update {
+            it.copy(
+                nombre = value,
+                nombreError = if (value.isBlank()) "Requerido" else null
+            )
+        }
+        recomputeProductoCanSubmit()
+    }
+
+    fun onProductoIdChange(value: String) {
+        _producto.update {
+            it.copy(
+                id = value,
+                idError = if (value.isBlank()) "Requerido" else null
+            )
+        }
+        recomputeProductoCanSubmit()
+    }
+
+    fun onProductoCategoriaChange(value: String) {
+        _producto.update {
+            it.copy(
+                categoria = value,
+                categoriaError = if (value.isBlank()) "Requerido" else null
+            )
+        }
+        recomputeProductoCanSubmit()
+    }
+
+    private fun recomputeProductoCanSubmit() {
+        val s = _producto.value
+        val noErrors = listOf(s.nombreError, s.idError, s.categoriaError).all { it == null }
+        val filled = s.nombre.isNotBlank() && s.id.isNotBlank() && s.categoria.isNotBlank()
+        _producto.update { it.copy(canSubmit = noErrors && filled) }
+    }
+
+    fun submitProducto() {
+        val s = _producto.value
+        if (!s.canSubmit || s.isSubmitting) return
+
+        viewModelScope.launch {
+            _producto.update { it.copy(isSubmitting = true, errorMsg = null, success = false) }
+            delay(500)
+
+            // 🔧 Asegúrate de implementar este método en UserRepository
+            val result = try {
+                repository.agregarProducto(
+                    nombre = s.nombre.trim(),
+                    id = s.id.trim(),
+                    categoria = s.categoria.trim()
+                )
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+
+            _producto.update {
+                if (result.isSuccess) {
+                    it.copy(isSubmitting = false, success = true, errorMsg = null)
+                } else {
+                    it.copy(
+                        isSubmitting = false,
+                        success = false,
+                        errorMsg = result.exceptionOrNull()?.message
+                            ?: "No se pudo guardar el producto"
+                    )
+                }
+            }
+        }
+    }
+
+    fun clearProductoResult() {
+        _producto.update { ProductoUiState() }
+    }
 
     // --------- NUEVO: Cerrar sesión ---------
     fun logout() {
@@ -293,5 +435,77 @@ class AuthViewModel(
         // (Opcional) Limpia estados de formularios
         _login.update { LoginUiState() }
         _register.update { RegisterUiState() }
+    }
+
+    // --------- CATEGORÍA: onChange ---------
+    fun onCategoriaNombreChange(value: String) {
+        _categoria.update {
+            it.copy(
+                nombre = value,
+                nombreError = if (value.isBlank()) "Requerido" else null
+            )
+        }
+        recomputeCategoriaCanSubmit()
+    }
+
+    fun onCategoriaIdChange(value: String) {
+        _categoria.update {
+            it.copy(
+                id = value,
+                idError = if (value.isBlank()) "Requerido" else null
+            )
+        }
+        recomputeCategoriaCanSubmit()
+    }
+
+    fun onCategoriaDescripcionChange(value: String) {
+        _categoria.update {
+            it.copy(
+                descripcion = value,
+                descripcionError = if (value.isBlank()) "Requerido" else null
+            )
+        }
+        recomputeCategoriaCanSubmit()
+    }
+
+    private fun recomputeCategoriaCanSubmit() {
+        val s = _categoria.value
+        val noErrors = listOf(s.nombreError, s.idError, s.descripcionError).all { it == null }
+        val filled = s.nombre.isNotBlank() && s.id.isNotBlank() && s.descripcion.isNotBlank()
+        _categoria.update { it.copy(canSubmit = noErrors && filled) }
+    }
+
+    fun submitCategoria() {
+        val s = _categoria.value
+        if (!s.canSubmit || s.isSubmitting) return
+
+        viewModelScope.launch {
+            _categoria.update { it.copy(isSubmitting = true, errorMsg = null, success = false) }
+
+            val result = try {
+                repository.agregarCategoria(
+                    nombre = s.nombre.trim(),
+                    id = s.id.trim(),
+                    descripcion = s.descripcion.trim()
+                )
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+
+            _categoria.update {
+                if (result.isSuccess) it.copy(isSubmitting = false, success = true, errorMsg = null)
+                else it.copy(
+                    isSubmitting = false,
+                    success = false,
+                    errorMsg = result.exceptionOrNull()?.message
+                        ?: "No se pudo guardar la categoría"
+                )
+            }
+        }
+    }
+
+    fun clearCategoriaResult() {
+        _categoria.update { CategoriaUiState() }
     }
 }

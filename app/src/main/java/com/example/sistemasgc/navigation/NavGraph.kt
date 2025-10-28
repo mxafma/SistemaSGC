@@ -6,6 +6,7 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -18,6 +19,7 @@ import com.example.sistemasgc.ui.screen.*
 import com.example.sistemasgc.ui.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
@@ -139,12 +141,30 @@ fun AppNavGraph(
                 composable(Route.Productos.path) {
                     ProductosScreen(
                         onSearch = { },
-                        onAddNewProduct = { }
+                        onAddNewProduct = { navController.navigate(Route.AgregarProducto.path) }
+
                     )
                 }
+
                 composable(Route.Categorias.path) {
-                    CategoriasScreen(
-                        onAddCategory = { _, _, _ -> }
+                    val catState = authViewModel.categoria.collectAsStateWithLifecycle().value
+
+                    // Si se guardó bien, volvemos y limpiamos estado
+                    LaunchedEffect(catState.success) {
+                        if (catState.success) {
+                            navController.popBackStack()
+                            authViewModel.clearCategoriaResult()
+                        }
+                    }
+
+                    CategoriaScreen(
+                        onAddCategory = { nombre, id, descripcion ->
+                            authViewModel.onCategoriaNombreChange(nombre)
+                            authViewModel.onCategoriaIdChange(id)
+                            authViewModel.onCategoriaDescripcionChange(descripcion)
+                            authViewModel.submitCategoria()
+                        },
+                        onCancel = { navController.popBackStack() }
                     )
                 }
                 composable(Route.Proveedores.path) {
@@ -173,6 +193,29 @@ fun AppNavGraph(
                         },
                         onSearch = { query ->
                             println("Buscando: $query")
+                        }
+                    )
+                }
+                composable(Route.AgregarProducto.path) {
+                    val productoState = authViewModel.producto.collectAsStateWithLifecycle().value
+                    LaunchedEffect(productoState.success) {
+                        if (productoState.success) {
+                            navController.popBackStack()
+                            authViewModel.clearProductoResult()
+                        }
+                    }
+                    AgregarProductoScreen(
+                        onAddProduct = { nombre, id, categoria ->
+                            // Pasamos los valores al VM y disparamos el guardado
+                            authViewModel.onProductoNombreChange(nombre)
+                            authViewModel.onProductoIdChange(id)
+                            authViewModel.onProductoCategoriaChange(categoria)
+                            authViewModel.submitProducto()
+                            // NO hacemos popBackStack aquí para no irnos antes de que termine el insert.
+                            // LaunchedEffect de arriba se encarga de volver cuando success = true.
+                        },
+                        onEditCategory = {
+                            navController.navigate(Route.Categorias.path)
                         }
                     )
                 }

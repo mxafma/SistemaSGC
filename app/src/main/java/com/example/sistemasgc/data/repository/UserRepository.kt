@@ -4,41 +4,57 @@ import com.example.sistemasgc.data.local.user.UserDao       // DAO de usuario
 import com.example.sistemasgc.data.local.user.UserEntity    // Entidad de usuario
 import com.example.sistemasgc.data.local.Proveedor.ProveedorDao
 import com.example.sistemasgc.data.local.Proveedor.ProveedorEntity
-// Repositorio: orquesta reglas de negocio para login/registro sobre el DAO.
+import com.example.sistemasgc.data.local.Producto.ProductoDao
+import com.example.sistemasgc.data.local.Producto.ProductoEntity
+import com.example.sistemasgc.data.local.Categoria.CategoriaDao
+import com.example.sistemasgc.data.local.Categoria.CategoriaEntity
+// Repositorio: orquesta reglas de negocio para login/registro sobre los DAOs.
 class UserRepository(
-    private val userDao: UserDao, // Inyección del DAO
-    private val proveedorDao: ProveedorDao
+    private val userDao: UserDao,
+    private val proveedorDao: ProveedorDao,
+    private val productoDao: ProductoDao,
+    private val categoriaDao: CategoriaDao
 ) {
+
+    // -------------------- USUARIOS --------------------
 
     // Login: busca por email y valida contraseña
     suspend fun login(email: String, password: String): Result<UserEntity> {
-        val user = userDao.getByEmail(email)                         // Busca usuario
-        return if (user != null && user.password == password) {      // Verifica pass
-            Result.success(user)                                     // Éxito
+        val user = userDao.getByEmail(email)
+        return if (user != null && user.password == password) {
+            Result.success(user)
         } else {
-            Result.failure(IllegalArgumentException("Credenciales inválidas")) // Error
+            Result.failure(IllegalArgumentException("Credenciales inválidas"))
         }
     }
 
-    // Registro: valida no duplicado y crea nuevo usuario (con teléfono)
+    // Registro: valida no duplicado y crea usuario
     suspend fun register(name: String, email: String, phone: String, password: String): Result<Long> {
-        val exists = userDao.getByEmail(email) != null               // ¿Correo ya usado?
+        val exists = userDao.getByEmail(email) != null
         if (exists) {
             return Result.failure(IllegalStateException("El correo ya está registrado"))
         }
-        val id = userDao.insert(                                     // Inserta nuevo
+        val id = userDao.insert(
             UserEntity(
                 name = name,
                 email = email,
-                phone = phone,                                       // Teléfono incluido
+                phone = phone,
                 password = password
             )
         )
-        return Result.success(id)                                    // Devuelve ID generado
+        return Result.success(id)
     }
 
-    suspend fun proveedor(Pname: String, Prut: String, Pphone: String, Pemail: String, Pdireccion: String): Result<Long> {
-        val existeProveedor = proveedorDao.getByEmailP(Pemail) != null          // ¿Correo ya usado?
+    // -------------------- PROVEEDORES --------------------
+
+    suspend fun proveedor(
+        Pname: String,
+        Prut: String,
+        Pphone: String,
+        Pemail: String,
+        Pdireccion: String
+    ): Result<Long> {
+        val existeProveedor = proveedorDao.getByEmailP(Pemail) != null
         if (existeProveedor) {
             return Result.failure(IllegalStateException("El correo ya está registrado"))
         }
@@ -51,10 +67,47 @@ class UserRepository(
                 Pdireccion = Pdireccion
             )
         )
-        return Result.success(id)                                    // Devuelve ID generado
+        return Result.success(id)
     }
 
     suspend fun obtenerTodosLosProveedores(): List<ProveedorEntity> {
         return proveedorDao.getAllP()
+    }
+
+    // -------------------- PRODUCTOS --------------------
+
+    /**
+     * Agrega un producto; lanza IllegalStateException si ya existe por idProducto o por nombre.
+     * Nota: tu ViewModel captura la excepción y construye un Result allí.
+     */
+    suspend fun agregarProducto(nombre: String, id: String, categoria: String) {
+        // Chequeos de unicidad simples (ajusta reglas si quieres permitir repetidos)
+        val dupById = productoDao.getByIdProducto(id)
+        if (dupById != null) {
+            throw IllegalStateException("Ya existe un producto con ID \"$id\"")
+        }
+
+        val dupByNombre = productoDao.getByNombre(nombre)
+        if (dupByNombre != null) {
+            throw IllegalStateException("Ya existe un producto con nombre \"$nombre\"")
+        }
+
+        productoDao.insert(
+            ProductoEntity(
+                nombre = nombre,
+                idProducto = id,
+                categoria = categoria
+            )
+        )
+    }
+
+    suspend fun obtenerTodosLosProductos(): List<ProductoEntity> {
+        return productoDao.getAll()
+    }
+    // -------------------- CATEGORIAS --------------------
+    suspend fun agregarCategoria(nombre: String, id: String, descripcion: String) {
+        if (categoriaDao.getByIdCategoria(id) != null) throw IllegalStateException("Ya existe una categoría con ID \"$id\"")
+        if (categoriaDao.getByNombre(nombre) != null) throw IllegalStateException("Ya existe una categoría con nombre \"$nombre\"")
+        categoriaDao.insert(CategoriaEntity(nombre = nombre, idCategoria = id, descripcion = descripcion))
     }
 }
