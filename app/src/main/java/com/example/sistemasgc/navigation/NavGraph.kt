@@ -6,6 +6,7 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -138,7 +139,8 @@ fun AppNavGraph(
                 composable(Route.Productos.path) {
                     ProductosScreen(
                         onSearch = { },
-                        onAddNewProduct = { }
+                        onAddNewProduct = { navController.navigate(Route.AgregarProducto.path) }
+
                     )
                 }
                 composable(Route.Categorias.path) {
@@ -172,6 +174,29 @@ fun AppNavGraph(
                         },
                         onSearch = { query ->
                             println("Buscando: $query")
+                        }
+                    )
+                }
+                composable(Route.AgregarProducto.path) {
+                    val productoState = authViewModel.producto.collectAsStateWithLifecycle().value
+                    LaunchedEffect(productoState.success) {
+                        if (productoState.success) {
+                            navController.popBackStack()
+                            authViewModel.clearProductoResult()
+                        }
+                    }
+                    AgregarProductoScreen(
+                        onAddProduct = { nombre, id, categoria ->
+                            // Pasamos los valores al VM y disparamos el guardado
+                            authViewModel.onProductoNombreChange(nombre)
+                            authViewModel.onProductoIdChange(id)
+                            authViewModel.onProductoCategoriaChange(categoria)
+                            authViewModel.submitProducto()
+                            // NO hacemos popBackStack aquí para no irnos antes de que termine el insert.
+                            // LaunchedEffect de arriba se encarga de volver cuando success = true.
+                        },
+                        onEditCategory = {
+                            navController.navigate(Route.Categorias.path)
                         }
                     )
                 }

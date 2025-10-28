@@ -11,6 +11,8 @@ import com.example.sistemasgc.domain.validation.*
 import com.example.sistemasgc.data.repository.UserRepository
 import com.example.sistemasgc.data.local.Proveedor.ProveedorEntity
 
+
+
 // ----------------- ESTADOS DE UI (observable con StateFlow) -----------------
 
 data class LoginUiState(
@@ -50,7 +52,6 @@ data class ProveedoresUiState(
     val email: String = "",
     val direccion: String = "",
 
-
     val nameError: String? = null,
     val rutError: String? = null,
     val phoneError: String? = null,
@@ -63,11 +64,26 @@ data class ProveedoresUiState(
     val errorMsg: String? = null
 )
 
+// --------- NUEVO: Estado de UI para Producto ---------
+data class ProductoUiState(
+    val nombre: String = "",
+    val id: String = "",
+    val categoria: String = "",
 
+    val nombreError: String? = null,
+    val idError: String? = null,
+    val categoriaError: String? = null,
+
+    val isSubmitting: Boolean = false,
+    val canSubmit: Boolean = false,
+    val success: Boolean = false,
+    val errorMsg: String? = null
+)
 
 class AuthViewModel(
     // Repositorio real (Room/SQLite o el que uses)
     private val repository: UserRepository
+
 ) : ViewModel() {
 
     // --------- NUEVO: estado global de sesión ---------
@@ -83,6 +99,10 @@ class AuthViewModel(
 
     private val _proveedor = MutableStateFlow(ProveedoresUiState())
     val proveedor: StateFlow<ProveedoresUiState> = _proveedor
+
+    // --------- NUEVO: Producto ---------
+    private val _producto = MutableStateFlow(ProductoUiState())
+    val producto: StateFlow<ProductoUiState> = _producto
 
     // --------- LOGIN ---------
 
@@ -162,11 +182,9 @@ class AuthViewModel(
         recomputeProveedorCanSubmit()
     }
 
-
-
     private fun recomputeProveedorCanSubmit() {
         val s = _proveedor.value
-        val noErrors = listOf(s.nameError, s.rutError,  s.phoneError, s.emailError,  s.direccionError).all { it == null }
+        val noErrors = listOf(s.nameError, s.rutError, s.phoneError, s.emailError, s.direccionError).all { it == null }
         val filled = s.name.isNotBlank() && s.rut.isNotBlank() && s.phone.isNotBlank() && s.email.isNotBlank() && s.direccion.isNotBlank()
         _proveedor.update { it.copy(canSubmit = noErrors && filled) }
     }
@@ -188,12 +206,10 @@ class AuthViewModel(
                 Pphone = s.phone.trim(),
                 Pemail = s.email.trim(),
                 Pdireccion = s.direccion.trim()
-
             )
 
             _proveedor.update {
                 if (result.isSuccess) {
-                    // Mantengo isLoggedIn = false para que tu flujo siga y navegue a Login
                     it.copy(isSubmitting = false, success = true, errorMsg = null)
                 } else {
                     it.copy(
@@ -210,7 +226,7 @@ class AuthViewModel(
         _proveedor.update { it.copy(success = false, errorMsg = null) }
     }
 
-    // --------- Proveedor ---------
+    // --------- REGISTER ---------
 
     fun onNameChange(value: String) {
         val filtered = value.filter { it.isLetter() || it.isWhitespace() }
@@ -240,8 +256,6 @@ class AuthViewModel(
         recomputeRegisterCanSubmit()
     }
 
-
-
     private fun recomputeRegisterCanSubmit() {
         val s = _register.value
         val noErrors = listOf(s.nameError, s.emailError, s.phoneError, s.passError, s.confirmError).all { it == null }
@@ -265,7 +279,6 @@ class AuthViewModel(
 
             _register.update {
                 if (result.isSuccess) {
-                    // Mantengo isLoggedIn = false para que tu flujo siga y navegue a Login
                     it.copy(isSubmitting = false, success = true, errorMsg = null)
                 } else {
                     it.copy(
@@ -282,7 +295,67 @@ class AuthViewModel(
         _register.update { it.copy(success = false, errorMsg = null) }
     }
 
+    // --------- PRODUCTO ---------
 
+    fun onProductoNombreChange(value: String) {
+        _producto.update { it.copy(nombre = value, nombreError = if (value.isBlank()) "Requerido" else null) }
+        recomputeProductoCanSubmit()
+    }
+
+    fun onProductoIdChange(value: String) {
+        _producto.update { it.copy(id = value, idError = if (value.isBlank()) "Requerido" else null) }
+        recomputeProductoCanSubmit()
+    }
+
+    fun onProductoCategoriaChange(value: String) {
+        _producto.update { it.copy(categoria = value, categoriaError = if (value.isBlank()) "Requerido" else null) }
+        recomputeProductoCanSubmit()
+    }
+
+    private fun recomputeProductoCanSubmit() {
+        val s = _producto.value
+        val noErrors = listOf(s.nombreError, s.idError, s.categoriaError).all { it == null }
+        val filled = s.nombre.isNotBlank() && s.id.isNotBlank() && s.categoria.isNotBlank()
+        _producto.update { it.copy(canSubmit = noErrors && filled) }
+    }
+
+    fun submitProducto() {
+        val s = _producto.value
+        if (!s.canSubmit || s.isSubmitting) return
+
+        viewModelScope.launch {
+            _producto.update { it.copy(isSubmitting = true, errorMsg = null, success = false) }
+            delay(500)
+
+            // 🔧 Asegúrate de implementar este método en UserRepository
+            val result = try {
+                repository.agregarProducto(
+                    nombre = s.nombre.trim(),
+                    id = s.id.trim(),
+                    categoria = s.categoria.trim()
+                )
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+
+            _producto.update {
+                if (result.isSuccess) {
+                    it.copy(isSubmitting = false, success = true, errorMsg = null)
+                } else {
+                    it.copy(
+                        isSubmitting = false,
+                        success = false,
+                        errorMsg = result.exceptionOrNull()?.message ?: "No se pudo guardar el producto"
+                    )
+                }
+            }
+        }
+    }
+
+    fun clearProductoResult() {
+        _producto.update { ProductoUiState() }
+    }
 
     // --------- NUEVO: Cerrar sesión ---------
     fun logout() {

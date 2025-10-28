@@ -1,60 +1,62 @@
 package com.example.sistemasgc.data.local.database
 
-import android.content.Context                                  // Contexto para construir DB
-import androidx.room.Database                                   // Anotación @Database
-import androidx.room.Room                                       // Builder de DB
-import androidx.room.RoomDatabase                               // Clase base de DB
-import androidx.sqlite.db.SupportSQLiteDatabase                 // Tipo del callback onCreate
-import com.example.sistemasgc.data.local.user.UserDao         // Import del DAO de usuario
-import com.example.sistemasgc.data.local.user.UserEntity      // Import de la entidad de usuario
+import android.content.Context
+import androidx.room.Database
+import androidx.room.Room
+import androidx.room.RoomDatabase
+import androidx.sqlite.db.SupportSQLiteDatabase
+
+import com.example.sistemasgc.data.local.user.UserDao
+import com.example.sistemasgc.data.local.user.UserEntity
+
 import com.example.sistemasgc.data.local.Proveedor.ProveedorDao
 import com.example.sistemasgc.data.local.Proveedor.ProveedorEntity
-import kotlinx.coroutines.CoroutineScope                        // Para corrutinas en callback
-import kotlinx.coroutines.Dispatchers                           // Dispatcher IO
-import kotlinx.coroutines.launch                                // Lanzar corrutina
 
-// @Database registra entidades y versión del esquema.
-// version = 1: como es primera inclusión con teléfono, partimos en 1.
+// ⬇️ IMPORTA EXPLÍCITO (ojo con mayúscula en "Producto")
+import com.example.sistemasgc.data.local.Producto.ProductoDao
+import com.example.sistemasgc.data.local.Producto.ProductoEntity
+
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+
 @Database(
-    entities = [UserEntity::class, ProveedorEntity::class],
-    version = 2,
-    exportSchema = true // Mantener true para inspección de esquema (útil en educación)
+    entities = [
+        UserEntity::class,
+        ProveedorEntity::class,
+        ProductoEntity::class,   // ✅ AGREGA LA ENTIDAD PRODUCTO
+    ],
+    version = 3,                // ✅ SUBE VERSIÓN PARA FORZAR RECREACIÓN
+    exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
 
-    // Exponemos el DAO de usuarios
     abstract fun userDao(): UserDao
-
     abstract fun proveedorDao(): ProveedorDao
-
-
+    abstract fun productoDao(): ProductoDao
 
     companion object {
         @Volatile
-        private var INSTANCE: AppDatabase? = null              // Instancia singleton
-        private const val DB_NAME = "ui_navegacion.db"         // Nombre del archivo .db
+        private var INSTANCE: AppDatabase? = null
+        private const val DB_NAME = "ui_navegacion.db"
 
-        // Obtiene la instancia única de la base
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
-                // Construimos la DB con callback de precarga
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     DB_NAME
                 )
-                    // Callback para ejecutar cuando la DB se crea por primera vez
                     .addCallback(object : RoomDatabase.Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)
-                            // Lanzamos una corrutina en IO para insertar datos iniciales
                             CoroutineScope(Dispatchers.IO).launch {
-                                val dao = getInstance(context).userDao()
-                                val proveedorDao = getInstance(context).proveedorDao()
+                                // Reusar la misma instancia
+                                val appDb = getInstance(context)
+                                val userDao = appDb.userDao()
+                                val proveedorDao = appDb.proveedorDao()
 
-                                // Precarga de usuarios (incluye teléfono)
-                                // Reemplaza aquí por los mismitos datos que usas en Login/Register.
-                                val seed = listOf(
+                                val seedUsers = listOf(
                                     UserEntity(
                                         name = "Admin",
                                         email = "admin@duoc.cl",
@@ -69,7 +71,7 @@ abstract class AppDatabase : RoomDatabase() {
                                     )
                                 )
 
-                                val proveedorSeed = listOf(
+                                val seedProveedores = listOf(
                                     ProveedorEntity(
                                         Pname = "Proveedor A",
                                         Prut = "12345678-9",
@@ -86,23 +88,21 @@ abstract class AppDatabase : RoomDatabase() {
                                     )
                                 )
 
-                                // Inserta seed sólo si la tabla está vacía
-                                if (dao.count() == 0) {
-                                    seed.forEach { dao.insert(it) }
+                                if (userDao.count() == 0) {
+                                    seedUsers.forEach { userDao.insert(it) }
                                 }
-
                                 if (proveedorDao.count() == 0) {
-                                    proveedorSeed.forEach { proveedorDao.insert(it) }
+                                    seedProveedores.forEach { proveedorDao.insert(it) }
                                 }
+                                // (Opcional) puedes sembrar productos aquí si quieres.
                             }
                         }
                     })
-                    // En entorno educativo, si cambias versión sin migraciones, destruye y recrea.
-                    .fallbackToDestructiveMigration()
+                    .fallbackToDestructiveMigration() // en dev: recrea al cambiar versión
                     .build()
 
-                INSTANCE = instance                             // Guarda la instancia
-                instance                                        // Devuelve la instancia
+                INSTANCE = instance
+                instance
             }
         }
     }

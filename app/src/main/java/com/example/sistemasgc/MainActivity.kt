@@ -20,59 +20,36 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent {
-            AppRoot()
-        }
+        setContent { AppRoot() }
     }
 }
 
-
-/*
-* En Compose, Surface es un contenedor visual que viene de Material 3.Crea un bloque
-*  que puedes personalizar con color, forma, sombra (elevación).
-Sirve para aplicar un fondo (color, borde, elevación, forma) siguiendo las guías de diseño
-* de Material.
-Piensa en él como una “lona base” sabre la cual vas a pintar tu UI.
-* Si cambias el tema a dark mode, colorScheme.background
-* cambia automáticamente y el Surface pinta la pantalla con el nuevo color.
-* */
-@Composable // Indica que esta función dibuja UI
-fun AppRoot() { // Raíz de la app para separar responsabilidades (se conserva)
-    // ====== NUEVO: construcción de dependencias (Composition Root) ======
+@Composable
+fun AppRoot() {
     val context = LocalContext.current.applicationContext
-    // ^ Obtenemos el applicationContext para construir la base de datos de Room.
-
     val db = AppDatabase.getInstance(context)
-    // ^ Singleton de Room. No crea múltiples instancias.
 
     val userDao = db.userDao()
-    // ^ Obtenemos el DAO de usuarios desde la DB.
-
     val proveedorDao = db.proveedorDao()
+    val productoDao = db.productoDao()          // ← NUEVO
 
     val userRepository = UserRepository(
         userDao = userDao,
-        proveedorDao = proveedorDao // ← AGREGAR ESTE PARÁMETRO
+        proveedorDao = proveedorDao,
+        productoDao = productoDao               // ← NUEVO
     )
-    // ^ Repositorio que encapsula la lógica de login/registro contra Room.
 
     val authViewModel: AuthViewModel = viewModel(
         factory = AuthViewModelFactory(userRepository)
     )
-    // ^ Creamos el ViewModel con factory para inyectar el repositorio.
-    //   Esto reemplaza cualquier uso anterior de listas en memoria (USERS).
 
-    // ====== TU NAVEGACIÓN ORIGINAL ======
-    val navController = rememberNavController() // Controlador de navegación
-    MaterialTheme { // Provee colores/tipografías Material 3
-        Surface(color = MaterialTheme.colorScheme.background) { // Fondo general
-
-
+    val navController = rememberNavController()
+    MaterialTheme {
+        Surface(color = MaterialTheme.colorScheme.background) {
             AppNavGraph(
                 navController = navController,
-                authViewModel = authViewModel // <-- NUEVO parámetro
+                authViewModel = authViewModel
             )
-
         }
     }
 }
