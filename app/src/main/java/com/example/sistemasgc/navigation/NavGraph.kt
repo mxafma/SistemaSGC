@@ -43,6 +43,7 @@ fun AppNavGraph(
     val goAgregarProveedores = { go(Route.AgregarProveedor.path) }
     val goCompras    = { go(Route.Compras.path) }
     val goDetallesCompras = {go(Route.DetallesCompras.path)}
+    val goReportes = {go(Route.Reportes.path)}
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -180,6 +181,15 @@ fun AppNavGraph(
                     DetallesComprasScreen(
                         // Aquí defines qué hacer cuando quieras volver
                         onBack = { navController.popBackStack() }
+                    )
+                }
+
+                composable(Route.Reportes.path) {
+                    ReportesScreen(
+                        onSearch = { query ->
+                            // Aquí puedes implementar la lógica de búsqueda
+                            println("Buscando en reportes: $query")
+                        }
                     )
                 }
             }

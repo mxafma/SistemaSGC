@@ -25,9 +25,10 @@ fun ComprasScreen(
     onSearch: (String) -> Unit
 ) {
 
-    var Proveedor by rememberSaveable { mutableStateOf("") }
-    var FormaPago by rememberSaveable { mutableStateOf("") }
-    var Fecha by rememberSaveable { mutableStateOf("") }
+
+    var Proveedor by rememberSaveable { mutableStateOf("Proveedor Ejemplo") }
+    var FormaPago by rememberSaveable { mutableStateOf("Efectivo") }
+    var Fecha by rememberSaveable { mutableStateOf("15/01/2024") }
 
     Surface(color = MaterialTheme.colorScheme.background) {
         Box(
@@ -113,7 +114,11 @@ fun ComprasScreen(
 
                 // ---- Botón Agregar ----
                 Button(
-                    onClick = { onNuevaCompra(Proveedor, FormaPago, Fecha) },
+                    onClick = { onNuevaCompra(Proveedor, FormaPago, Fecha)
+                        println("   Proveedor: '$Proveedor'")
+                        println("   FormaPago: '$FormaPago'")
+                        println("   Fecha: '$Fecha'")},
+
                     modifier = Modifier
                         .fillMaxWidth(0.7f)
                         .height(50.dp),
