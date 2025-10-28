@@ -12,7 +12,9 @@ import com.example.sistemasgc.data.local.user.UserEntity
 import com.example.sistemasgc.data.local.Proveedor.ProveedorDao
 import com.example.sistemasgc.data.local.Proveedor.ProveedorEntity
 
-// ⬇️ IMPORTA EXPLÍCITO (ojo con mayúscula en "Producto")
+import com.example.sistemasgc.data.local.Categoria.CategoriaDao
+import com.example.sistemasgc.data.local.Categoria.CategoriaEntity
+
 import com.example.sistemasgc.data.local.Producto.ProductoDao
 import com.example.sistemasgc.data.local.Producto.ProductoEntity
 
@@ -24,9 +26,10 @@ import kotlinx.coroutines.launch
     entities = [
         UserEntity::class,
         ProveedorEntity::class,
-        ProductoEntity::class,   // ✅ AGREGA LA ENTIDAD PRODUCTO
+        ProductoEntity::class,
+        CategoriaEntity::class
     ],
-    version = 3,                // ✅ SUBE VERSIÓN PARA FORZAR RECREACIÓN
+    version = 4,                // ✅ SUBE VERSIÓN PARA FORZAR RECREACIÓN
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -34,6 +37,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
     abstract fun proveedorDao(): ProveedorDao
     abstract fun productoDao(): ProductoDao
+    abstract fun categoriaDao(): CategoriaDao
 
     companion object {
         @Volatile
@@ -55,6 +59,7 @@ abstract class AppDatabase : RoomDatabase() {
                                 val appDb = getInstance(context)
                                 val userDao = appDb.userDao()
                                 val proveedorDao = appDb.proveedorDao()
+
 
                                 val seedUsers = listOf(
                                     UserEntity(

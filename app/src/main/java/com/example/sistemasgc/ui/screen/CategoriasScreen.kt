@@ -12,11 +12,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun CategoriasScreen(
-    onAddCategory: (id: String, nombre: String, descripcion: String) -> Unit
+fun CategoriaScreen(
+    onAddCategory: (String, String, String) -> Unit,
+    onCancel: () -> Unit
 ) {
-    var id by rememberSaveable { mutableStateOf("") }
     var nombre by rememberSaveable { mutableStateOf("") }
+    var id by rememberSaveable { mutableStateOf("") }
     var descripcion by rememberSaveable { mutableStateOf("") }
 
     Surface(color = MaterialTheme.colorScheme.background) {
@@ -32,13 +33,11 @@ fun CategoriasScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "Categorías",
+                    text = "Agregar categoría",
                     style = MaterialTheme.typography.headlineSmall,
                     textAlign = TextAlign.Center
                 )
 
-
-                // ---- Nombre ----
                 OutlinedTextField(
                     value = nombre,
                     onValueChange = { nombre = it },
@@ -47,50 +46,52 @@ fun CategoriasScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // ---- Descripción (opcional) ----
                 OutlinedTextField(
-                    value = descripcion,
-                    onValueChange = { descripcion = it },
-                    label = { Text("Descripción (opcional)") },
-                    singleLine = false,
-                    minLines = 2,
+                    value = id,
+                    onValueChange = { id = it },
+                    label = { Text("ID") },
+                    singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // ---- Botón Agregar ----
-                Button(
-                    onClick = { onAddCategory(id.trim(), nombre.trim(), descripcion.trim()) },
-                    enabled = nombre.isNotBlank(),
-                    modifier = Modifier
-                        .fillMaxWidth(0.7f)
-                        .height(50.dp),
-                    shape = MaterialTheme.shapes.extraLarge
-                ) {
-                    Text("Agregar")
+                OutlinedTextField(
+                    value = descripcion,
+                    onValueChange = { descripcion = it },
+                    label = { Text("Descripción") },
+                    singleLine = false,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedButton(
+                        onClick = onCancel,
+                        modifier = Modifier
+                            .fillMaxWidth(0.45f)
+                            .height(50.dp),
+                        shape = MaterialTheme.shapes.extraLarge
+                    ) { Text("Cancelar") }
+
+                    Button(
+                        onClick = { onAddCategory(nombre, id, descripcion) },
+                        modifier = Modifier
+                            .fillMaxWidth(0.45f)
+                            .height(50.dp),
+                        shape = MaterialTheme.shapes.extraLarge
+                    ) { Text("Guardar") }
                 }
             }
         }
     }
 }
 
-/* =================== PREVIEWS =================== */
-
-@Preview(
-    name = "Categorías – Light",
-    showBackground = true,
-    showSystemUi = true
-)
-@Preview(
-    name = "Categorías – Dark",
-    showBackground = true,
-    showSystemUi = true,
-    uiMode = Configuration.UI_MODE_NIGHT_YES
-)
+@Preview(showBackground = true, showSystemUi = true, name = "AgregarCategoria – Light")
+@Preview(showBackground = true, showSystemUi = true, name = "AgregarCategoria – Dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
-private fun CategoriasScreenPreview() {
+private fun CategoriaPreview() {
     MaterialTheme {
-        CategoriasScreen(
-            onAddCategory = { _, _, _ -> }
+        CategoriaScreen(
+            onAddCategory = { _, _, _ -> },
+            onCancel = {}
         )
     }
 }

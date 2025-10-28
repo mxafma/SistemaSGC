@@ -6,12 +6,14 @@ import com.example.sistemasgc.data.local.Proveedor.ProveedorDao
 import com.example.sistemasgc.data.local.Proveedor.ProveedorEntity
 import com.example.sistemasgc.data.local.Producto.ProductoDao
 import com.example.sistemasgc.data.local.Producto.ProductoEntity
-
+import com.example.sistemasgc.data.local.Categoria.CategoriaDao
+import com.example.sistemasgc.data.local.Categoria.CategoriaEntity
 // Repositorio: orquesta reglas de negocio para login/registro sobre los DAOs.
 class UserRepository(
     private val userDao: UserDao,
     private val proveedorDao: ProveedorDao,
-    private val productoDao: ProductoDao
+    private val productoDao: ProductoDao,
+    private val categoriaDao: CategoriaDao
 ) {
 
     // -------------------- USUARIOS --------------------
@@ -101,5 +103,11 @@ class UserRepository(
 
     suspend fun obtenerTodosLosProductos(): List<ProductoEntity> {
         return productoDao.getAll()
+    }
+    // -------------------- CATEGORIAS --------------------
+    suspend fun agregarCategoria(nombre: String, id: String, descripcion: String) {
+        if (categoriaDao.getByIdCategoria(id) != null) throw IllegalStateException("Ya existe una categoría con ID \"$id\"")
+        if (categoriaDao.getByNombre(nombre) != null) throw IllegalStateException("Ya existe una categoría con nombre \"$nombre\"")
+        categoriaDao.insert(CategoriaEntity(nombre = nombre, idCategoria = id, descripcion = descripcion))
     }
 }

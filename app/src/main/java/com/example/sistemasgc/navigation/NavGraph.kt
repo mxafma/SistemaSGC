@@ -19,6 +19,7 @@ import com.example.sistemasgc.ui.screen.*
 import com.example.sistemasgc.ui.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
@@ -143,9 +144,26 @@ fun AppNavGraph(
 
                     )
                 }
+
                 composable(Route.Categorias.path) {
-                    CategoriasScreen(
-                        onAddCategory = { _, _, _ -> }
+                    val catState = authViewModel.categoria.collectAsStateWithLifecycle().value
+
+                    // Si se guardó bien, volvemos y limpiamos estado
+                    LaunchedEffect(catState.success) {
+                        if (catState.success) {
+                            navController.popBackStack()
+                            authViewModel.clearCategoriaResult()
+                        }
+                    }
+
+                    CategoriaScreen(
+                        onAddCategory = { nombre, id, descripcion ->
+                            authViewModel.onCategoriaNombreChange(nombre)
+                            authViewModel.onCategoriaIdChange(id)
+                            authViewModel.onCategoriaDescripcionChange(descripcion)
+                            authViewModel.submitCategoria()
+                        },
+                        onCancel = { navController.popBackStack() }
                     )
                 }
                 composable(Route.Proveedores.path) {
