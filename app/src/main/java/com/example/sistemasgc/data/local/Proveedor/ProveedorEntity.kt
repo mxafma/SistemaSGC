@@ -14,7 +14,7 @@ data class ProveedorEntity(
     val Prut: String,
     val Pemail: String,
     val Pphone: String,
-    val Pdireccion: String
+    val Pdireccion: String? = null
 
 
 )

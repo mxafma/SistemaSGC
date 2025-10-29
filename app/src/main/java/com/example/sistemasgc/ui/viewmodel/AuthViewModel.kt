@@ -10,6 +10,8 @@ import kotlinx.coroutines.launch
 import com.example.sistemasgc.domain.validation.*
 import com.example.sistemasgc.data.repository.UserRepository
 import com.example.sistemasgc.data.local.Proveedor.ProveedorEntity
+import java.util.*
+import java.text.SimpleDateFormat
 
 // ----------------- ESTADOS DE UI (observable con StateFlow) -----------------
 
@@ -100,6 +102,27 @@ data class CategoriaUiState(
     val errorMsg: String? = null
 )
 
+data class Proveedor(
+    val id: String,
+    val nombre: String,
+    val rut: String
+)
+
+
+
+data class ComprasUiState(
+    val proveedorSeleccionado: String = "",
+    val formaPagoSeleccionada: String = "",
+    val fechaSeleccionada: String = "",
+    val proveedores: List<Proveedor> = emptyList(),
+    val mostrarSelectorFecha: Boolean = false,
+    val isSubmitting: Boolean = false,
+    val success: Boolean = false,
+    val errorMsg: String? = null
+)
+
+// ELIMINA completamente la data class CompraState
+
 class AuthViewModel(
     // Repositorio real (Room/SQLite o el que uses)
     private val repository: UserRepository
@@ -179,6 +202,131 @@ class AuthViewModel(
         _login.update { it.copy(success = false, errorMsg = null) }
     }
 
+    // --------- NUEVO: Estado de Compras ---------
+    private val _compras = MutableStateFlow(ComprasUiState())
+    val compras: StateFlow<ComprasUiState> = _compras
+
+    // Formas de pago predefinidas
+    private val formasPago = listOf(
+        "Efectivo",
+        "Transferencia",
+        "Tarjeta",
+        "Crédito (Pago Pendiente)"
+    )
+
+    init {
+        // Inicializar compras con fecha actual y cargar proveedores
+        establecerFechaActualCompras()
+        cargarProveedoresParaCompras()
+    }
+
+    // --------- FUNCIONES DE COMPRAS ---------
+
+    private fun establecerFechaActualCompras() {
+        val fechaActual = obtenerFechaActualFormateada()
+        _compras.update { it.copy(fechaSeleccionada = fechaActual) }
+    }
+
+    private fun obtenerFechaActualFormateada(): String {
+        val calendar = Calendar.getInstance()
+        val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+        return dateFormat.format(calendar.time)
+    }
+
+    private fun cargarProveedoresParaCompras() {
+        viewModelScope.launch {
+            try {
+                val proveedoresEntities = repository.obtenerTodosLosProveedores()
+                val proveedores = proveedoresEntities.map { entity ->
+                    Proveedor(
+                        id = entity.Pid.toString(),
+                        nombre = entity.Pname,
+                        rut = entity.Prut
+                    )
+                }
+                _compras.update { it.copy(proveedores = proveedores) }
+            } catch (e: Exception) {
+                // En caso de error, usar lista vacía o datos de ejemplo
+                val proveedoresEjemplo = listOf(
+                    Proveedor("1", "Proveedor A", "12345678-9"),
+                    Proveedor("2", "Proveedor B", "87654321-0")
+                )
+                _compras.update { it.copy(proveedores = proveedoresEjemplo) }
+            }
+        }
+    }
+
+    fun onComprasProveedorChange(proveedor: String) {
+        _compras.update { it.copy(proveedorSeleccionado = proveedor) }
+    }
+
+    fun onComprasFormaPagoChange(formaPago: String) {
+        _compras.update { it.copy(formaPagoSeleccionada = formaPago) }
+    }
+
+    fun onComprasFechaChange(fecha: String) {
+        _compras.update { it.copy(fechaSeleccionada = fecha) }
+    }
+
+
+    fun getFormasPago(): List<String> = formasPago
+
+    fun submitCompra(
+        onSuccess: () -> Unit = {}
+    ) {
+        val state = _compras.value
+        if (state.proveedorSeleccionado.isBlank() || state.formaPagoSeleccionada.isBlank()) {
+            _compras.update {
+                it.copy(errorMsg = "Complete todos los campos requeridos")
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            _compras.update { it.copy(isSubmitting = true, errorMsg = null) }
+
+            delay(500) // Simular procesamiento
+
+            try {
+                // Lógica de guardado...
+                println("Compra agregada: ${state.proveedorSeleccionado}")
+
+                _compras.update {
+                    it.copy(
+                        isSubmitting = false,  // ✅ IMPORTANTE: resetear isSubmitting
+                        success = true,
+                        proveedorSeleccionado = "",
+                        formaPagoSeleccionada = "",
+                        errorMsg = null
+                    )
+                }
+                establecerFechaActualCompras()
+                onSuccess()
+
+            } catch (e: Exception) {
+                _compras.update {
+                    it.copy(
+                        isSubmitting = false,  // ✅ IMPORTANTE: resetear incluso en error
+                        success = false,
+                        errorMsg = "Error al guardar la compra: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    fun clearComprasResult() {
+        _compras.update {
+            it.copy(
+                success = false,
+                errorMsg = null,
+                mostrarSelectorFecha = false
+            )
+        }
+    }
+
+    // --------- PROVEEDOR ---------
+
     // --------- PROVEEDOR ---------
 
     fun onProveedorNameChange(value: String) {
@@ -209,13 +357,13 @@ class AuthViewModel(
     }
 
     fun onProveedorRutChange(value: String) {
-        _proveedor.update { it.copy(rut = value, rutError = validateRut(value)) }
+        _proveedor.update { it.copy(rut = value, rutError = validateRutChileno(value)) }
         recomputeProveedorCanSubmit()
     }
 
     fun onProveedorDireccionChange(value: String) {
-        _proveedor.update { it.copy(direccion = value, direccionError = validateDireccion(value)) }
-        recomputeProveedorCanSubmit()
+        // ✅ Dirección es opcional - sin validación de error
+        _proveedor.update { it.copy(direccion = value, direccionError = null) }
     }
 
     private fun recomputeProveedorCanSubmit() {
@@ -224,11 +372,13 @@ class AuthViewModel(
             s.nameError,
             s.rutError,
             s.phoneError,
-            s.emailError,
-            s.direccionError
+            s.emailError
+            // s.direccionError se omite porque es opcional
         ).all { it == null }
-        val filled =
-            s.name.isNotBlank() && s.rut.isNotBlank() && s.phone.isNotBlank() && s.email.isNotBlank() && s.direccion.isNotBlank()
+
+        // Dirección NO es requerida
+        val filled = s.name.isNotBlank() && s.rut.isNotBlank() && s.phone.isNotBlank() && s.email.isNotBlank()
+
         _proveedor.update { it.copy(canSubmit = noErrors && filled) }
     }
 
@@ -243,16 +393,20 @@ class AuthViewModel(
             _proveedor.update { it.copy(isSubmitting = true, errorMsg = null, success = false) }
             delay(700)
 
+            // ✅ Dirección opcional: solo se envía si no está vacía
+            val direccionParaGuardar = s.direccion.trim().takeIf { it.isNotBlank() }
+
             val result = repository.proveedor(
                 Pname = s.name.trim(),
                 Prut = s.rut.trim(),
                 Pphone = s.phone.trim(),
                 Pemail = s.email.trim(),
-                Pdireccion = s.direccion.trim()
+                Pdireccion = direccionParaGuardar // ← Opcional
             )
 
             _proveedor.update {
                 if (result.isSuccess) {
+                    cargarProveedoresParaCompras()
                     it.copy(isSubmitting = false, success = true, errorMsg = null)
                 } else {
                     it.copy(
@@ -267,6 +421,66 @@ class AuthViewModel(
 
     fun clearProveedorResult() {
         _proveedor.update { it.copy(success = false, errorMsg = null) }
+    }
+
+    // --------- VALIDACIÓN DE RUT CHILENO ---------
+
+    private fun validateRutChileno(rut: String): String? {
+        if (rut.isBlank()) return "El RUT es obligatorio"
+
+        val rutLimpio = rut.replace(".", "")
+            .replace("-", "")
+            .replace(" ", "")
+            .uppercase()
+
+        if (rutLimpio.length < 2) return "RUT demasiado corto"
+
+        val numeroStr = rutLimpio.substring(0, rutLimpio.length - 1)
+        val dvIngresado = rutLimpio.substring(rutLimpio.length - 1)
+
+        val numero = try {
+            numeroStr.toLong()
+        } catch (e: NumberFormatException) {
+            return "RUT inválido"
+        }
+
+        if (numero <= 0) return "RUT inválido"
+
+        if (!dvIngresado.matches(Regex("[0-9K]"))) {
+            return "RUT inválido"
+        }
+
+        // ✅ Fórmula para calcular dígito verificador
+        val dvCalculado = calcularDigitoVerificadorRUT(numero)
+        val dvCalculadoStr = if (dvCalculado == 10) "K" else dvCalculado.toString()
+
+        return if (dvIngresado == dvCalculadoStr) {
+            null
+        } else {
+            "RUT inválido" // ← Solo muestra "RUT inválido"
+        }
+    }
+
+    // ✅ Fórmula del dígito verificador del RUT
+    private fun calcularDigitoVerificadorRUT(rut: Long): Int {
+        var suma = 0
+        var multiplicador = 2
+        var rutTemp = rut
+
+        while (rutTemp > 0) {
+            val digito = (rutTemp % 10).toInt()
+            suma += digito * multiplicador
+            rutTemp /= 10
+            multiplicador++
+            if (multiplicador > 7) multiplicador = 2
+        }
+
+        val resto = suma % 11
+        return when (val dv = 11 - resto) {
+            11 -> 0
+            10 -> 10
+            else -> dv
+        }
     }
 
     // --------- REGISTER ---------

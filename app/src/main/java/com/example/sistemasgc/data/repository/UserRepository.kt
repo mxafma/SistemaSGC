@@ -57,7 +57,7 @@ class UserRepository(
         Prut: String,
         Pphone: String,
         Pemail: String,
-        Pdireccion: String
+        Pdireccion: String? = null
     ): Result<Long> {
         val existeProveedor = proveedorDao.getByEmailP(Pemail) != null
         if (existeProveedor) {

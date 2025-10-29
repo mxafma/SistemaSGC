@@ -201,7 +201,8 @@ fun AppNavGraph(
                         },
                         onSearch = { query ->
                             println("Buscando: $query")
-                        }
+                        },
+                        viewModel = authViewModel
                     )
                 }
                 composable(Route.AgregarProducto.path) {

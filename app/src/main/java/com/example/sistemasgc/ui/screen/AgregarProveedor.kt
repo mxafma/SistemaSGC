@@ -108,7 +108,7 @@ private fun AgregarProveedorScreen(
                 OutlinedTextField(
                     value = name,
                     onValueChange = onNameChange,
-                    label = { Text("Nombre del Proveedor") },
+                    label = { Text("Nombre del Proveedor *") },
                     singleLine = true,
                     isError = nameError != null,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
@@ -127,7 +127,7 @@ private fun AgregarProveedorScreen(
                 OutlinedTextField(
                     value = rut,
                     onValueChange = onRutChange,
-                    label = { Text("RUT") },
+                    label = { Text("RUT *") },
                     singleLine = true,
                     isError = rutError != null,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
@@ -146,7 +146,7 @@ private fun AgregarProveedorScreen(
                 OutlinedTextField(
                     value = phone,
                     onValueChange = onPhoneChange,
-                    label = { Text("Teléfono") },
+                    label = { Text("Teléfono *") },
                     singleLine = true,
                     isError = phoneError != null,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
@@ -165,7 +165,7 @@ private fun AgregarProveedorScreen(
                 OutlinedTextField(
                     value = email,
                     onValueChange = onEmailChange,
-                    label = { Text("Email") },
+                    label = { Text("Email *") },
                     singleLine = true,
                     isError = emailError != null,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
