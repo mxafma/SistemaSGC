@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModelProvider                      // Factory de V
 import com.example.sistemasgc.data.repository.DataRepository   // Repositorio a inyectar
 
 // Factory simple para crear AuthViewModel con su DataRepository.
-class AuthViewModelFactory(
+class ViewModelFactory(
     private val repository: DataRepository                       // Dependencia que inyectaremos
 ) : ViewModelProvider.Factory {
 

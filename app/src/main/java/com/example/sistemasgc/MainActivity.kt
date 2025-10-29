@@ -14,7 +14,7 @@ import com.example.sistemasgc.data.local.database.AppDatabase
 import com.example.sistemasgc.data.repository.DataRepository
 import com.example.sistemasgc.navigation.AppNavGraph
 import com.example.sistemasgc.ui.viewmodel.AuthViewModel
-import com.example.sistemasgc.ui.viewmodel.AuthViewModelFactory
+import com.example.sistemasgc.ui.viewmodel.ViewModelFactory
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,7 +42,7 @@ fun AppRoot() {
     )
 
     val authViewModel: AuthViewModel = viewModel(
-        factory = AuthViewModelFactory(userRepository)
+        factory = ViewModelFactory(userRepository)
     )
 
     val navController = rememberNavController()
