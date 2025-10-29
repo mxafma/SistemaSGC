@@ -18,6 +18,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.* // remember / mutableStateOf
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.Color
+
 // AppTopBar.kt
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,7 +27,7 @@ fun AppTopBar(
     onHome: () -> Unit,
     onLogin: () -> Unit,
     onRegister: () -> Unit,
-    // 👇 NUEVO
+    onLogout: (() -> Unit)? = null, // 👈 callback para cerrar sesión
     isLoggedIn: Boolean,
     onProductos: (() -> Unit)? = null,
     onProveedores: (() -> Unit)? = null,
@@ -70,21 +71,20 @@ fun AppTopBar(
                 IconButton(onClick = { showMenu = true }) {
                     Icon(Icons.Filled.MoreVert, contentDescription = "Más")
                 }
-                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+
+                // 👇 Faltaba envolver el item dentro del DropdownMenu
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false }
+                ) {
                     DropdownMenuItem(
-                        text = { Text("Productos") },
-                        onClick = { showMenu = false; onProductos?.invoke() },
-                        enabled = onProductos != null
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Proveedores") },
-                        onClick = { showMenu = false; onProveedores?.invoke() },
-                        enabled = onProveedores != null
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Compras") },
-                        onClick = { showMenu = false; onCompras?.invoke() },
-                        enabled = onCompras != null
+                        text = { Text("Cerrar sesión") },
+                        onClick = {
+                            showMenu = false
+                            onLogout?.invoke()
+
+
+                        }
                     )
                 }
             }

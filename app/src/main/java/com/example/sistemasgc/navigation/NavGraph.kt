@@ -30,7 +30,7 @@ fun AppNavGraph(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    // 👇 TOMAMOS EL ESTADO DE LOGIN DESDE EL VM (ajusta al nombre real de tu Flow/State)
+    // Estado de login desde el VM
     val isLoggedIn = authViewModel.isLoggedIn.collectAsStateWithLifecycle(initialValue = false).value
 
     val go: (String) -> Unit = { route ->
@@ -46,13 +46,12 @@ fun AppNavGraph(
     val goProveedores= { go(Route.Proveedores.path) }
     val goAgregarProveedores = { go(Route.AgregarProveedor.path) }
     val goCompras    = { go(Route.Compras.path) }
-    val goDetallesCompras = {go(Route.DetallesCompras.path)}
-    val goReportes = {go(Route.Reportes.path)} //proximo
+    val goDetallesCompras = { go(Route.DetallesCompras.path) }
+    val goReportes = { go(Route.Reportes.path) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            // 👇 Cambiamos el contenido del Drawer según login
             if (!isLoggedIn) {
                 AppDrawer(
                     currentRoute = navController.currentBackStackEntry?.destination?.route,
@@ -63,14 +62,12 @@ fun AppNavGraph(
                     )
                 )
             } else {
-
                 AppDrawer(
                     currentRoute = navController.currentBackStackEntry?.destination?.route,
                     items = defaultDrawerItems(
                         onHome = { scope.launch { drawerState.close() }; goHome2() },
-                        onLogin = null,      // no mostrar
-                        onRegister = null,   // no mostrar
-                        // 👇 Extiende tu helper para aceptar estas rutas internas
+                        onLogin = null,
+                        onRegister = null,
                         onProductos = { scope.launch { drawerState.close() }; goProductos() },
                         onProveedores = { scope.launch { drawerState.close() }; goProveedores() },
                         onCompras = { scope.launch { drawerState.close() }; goCompras() },
@@ -85,14 +82,26 @@ fun AppNavGraph(
                 AppTopBar(
                     onOpenDrawer = { scope.launch { drawerState.open() } },
                     onHome = if (isLoggedIn) goHome2 else goHome,
-
                     onLogin = { if (!isLoggedIn) goLogin() },
                     onRegister = { if (!isLoggedIn) goRegister() },
-
                     isLoggedIn = isLoggedIn,
                     onProductos = if (isLoggedIn) goProductos else null,
                     onProveedores = if (isLoggedIn) goProveedores else null,
-                    onCompras = if (isLoggedIn) goCompras else null
+                    onCompras = if (isLoggedIn) goCompras else null,
+
+                    // ✅ NUEVO: desloguear y navegar a Home limpiando el back stack
+                    onLogout = {
+                        scope.launch {
+                            drawerState.close()
+                            authViewModel.logout()
+                            navController.navigate(Route.Home.path) {
+                                // Limpia el stack anterior (cuando start era Home2 al estar logeado)
+                                popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                                launchSingleTop = true
+                                restoreState = false
+                            }
+                        }
+                    }
                 )
             }
         ) { innerPadding ->
@@ -142,29 +151,21 @@ fun AppNavGraph(
                 }
                 composable(Route.Productos.path) {
                     val productos = authViewModel.productosNombres.collectAsStateWithLifecycle(emptyList()).value
-
-                    // Recarga SIEMPRE cuando entras a la pantalla
-                    LaunchedEffect(Unit) {
-                        authViewModel.loadProductos()
-                    }
-
+                    LaunchedEffect(Unit) { authViewModel.loadProductos() }
                     ProductosScreen(
-                        onSearch = { /* lógica de búsqueda si quieres */ },
+                        onSearch = { /* ... */ },
                         onAddNewProduct = { navController.navigate(Route.AgregarProducto.path) },
                         productosExistentes = productos
                     )
                 }
-
                 composable(Route.Categorias.path) {
                     val catState = authViewModel.categoria.collectAsStateWithLifecycle().value
-
                     LaunchedEffect(catState.success) {
                         if (catState.success) {
                             navController.popBackStack()
                             authViewModel.clearCategoriaResult()
                         }
                     }
-
                     CategoriaScreen(
                         onAddCategory = { nombre, descripcion ->
                             authViewModel.onCategoriaNombreChange(nombre)
@@ -174,54 +175,40 @@ fun AppNavGraph(
                         onCancel = { navController.popBackStack() }
                     )
                 }
-
                 composable(Route.Proveedores.path) {
                     ProveedoresScreen(
                         onSearch = { },
                         onGoagregarProveedores = goAgregarProveedores
-
                     )
                 }
-
                 composable(Route.AgregarProveedor.path) {
                     AgregarProveedorScreenVM(
-                        vm = authViewModel, // ← Pasar el ViewModel
-                        onProveedorAgregado = {
-                            // Vuelve automáticamente a proveedores cuando se agrega exitosamente
-                            navController.popBackStack()
-                        }
+                        vm = authViewModel,
+                        onProveedorAgregado = { navController.popBackStack() }
                     )
                 }
-
                 composable(Route.Compras.path) {
                     ComprasScreen(
                         onDetallesCompras = goDetallesCompras,
                         onNuevaCompra = { proveedor, formaPago, fecha ->
                             println("Nueva compra: $proveedor, $formaPago, $fecha")
                         },
-                        onSearch = { query ->
-                            println("Buscando: $query")
-                        },
+                        onSearch = { query -> println("Buscando: $query") },
                         viewModel = authViewModel
                     )
                 }
                 composable(Route.AgregarProducto.path) {
                     val productoState = authViewModel.producto.collectAsStateWithLifecycle().value
-
-                    // Cuando se guarda OK: volvemos y limpiamos estado
                     LaunchedEffect(productoState.success) {
                         if (productoState.success) {
                             navController.popBackStack()
                             authViewModel.clearProductoResult()
                         }
                     }
-
-
                     var catOptions by remember { mutableStateOf<List<String>>(emptyList()) }
                     LaunchedEffect(Unit) {
                         catOptions = try { authViewModel.getCategoriasSugeridas() } catch (_: Exception) { emptyList() }
                     }
-
                     AgregarProductoScreen(
                         onAddProduct = { nombre, sku, categoria, photoUri ->
                             authViewModel.onProductoNombreChange(nombre)
@@ -234,21 +221,12 @@ fun AppNavGraph(
                         initialCategories = catOptions
                     )
                 }
-
-
                 composable(Route.DetallesCompras.path) {
-                    DetallesComprasScreen(
-                        // Aquí defines qué hacer cuando quieras volver
-                        onBack = { navController.popBackStack() }
-                    )
+                    DetallesComprasScreen(onBack = { navController.popBackStack() })
                 }
-
                 composable(Route.Reportes.path) {
                     ReportesScreen(
-                        onSearch = { query ->
-                            // Aquí puedes implementar la lógica de búsqueda
-                            println("Buscando en reportes: $query")
-                        }
+                        onSearch = { query -> println("Buscando en reportes: $query") }
                     )
                 }
             }
