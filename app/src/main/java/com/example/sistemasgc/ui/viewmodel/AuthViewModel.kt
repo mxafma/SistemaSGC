@@ -122,8 +122,10 @@ class AuthViewModel(
     // --------- NUEVO: Producto ---------
     private val _producto = MutableStateFlow(ProductoUiState())
     val producto: StateFlow<ProductoUiState> = _producto
+
     private val _productosNombres = MutableStateFlow<List<String>>(emptyList())
     val productosNombres: StateFlow<List<String>> = _productosNombres
+
     // --------- Categorias ---------
     private val _categoria = MutableStateFlow(CategoriaUiState())
     val categoria: StateFlow<CategoriaUiState> = _categoria
@@ -353,7 +355,7 @@ class AuthViewModel(
         _register.update { it.copy(success = false, errorMsg = null) }
     }
 
-// --------- PRODUCTO ---------
+    // --------- PRODUCTO ---------
 
     fun onProductoNombreChange(value: String) {
         val trimmed = value
@@ -365,9 +367,11 @@ class AuthViewModel(
         _producto.update { it.copy(nombre = trimmed, nombreError = error) }
         recomputeProductoCanSubmit()
     }
+
     fun clearProductoResult() {
         _producto.value = ProductoUiState()
     }
+
     fun onProductoSkuChange(value: String) {
         // SKU es opcional, pero si hay contenido DEBE ser numérico
         val v = value.trim()
@@ -427,11 +431,15 @@ class AuthViewModel(
                     )
                 }
             }
+
+            // ✅ NUEVO: refrescar la lista de nombres tras un alta exitosa
+            if (result.isSuccess) {
+                loadProductos() // ← vuelve a publicar _productosNombres
+            }
         }
     }
 
-    // Sugerencias de categorías para el combo
-// Sugerencias de categorías para el combo (solo nombres)
+    // Sugerencias de categorías para el combo (solo nombres)
     suspend fun getCategoriasSugeridas(): List<String> {
         return try {
             repository.obtenerCategoriasNombres()   // <- este método lo agregamos en el repo
@@ -462,9 +470,7 @@ class AuthViewModel(
         recomputeCategoriaCanSubmit()
     }
 
-
     fun onCategoriaDescripcionChange(value: String) {
-
         _categoria.update { it.copy(descripcion = value, descripcionError = null) }
         recomputeCategoriaCanSubmit()
     }
@@ -504,10 +510,10 @@ class AuthViewModel(
         }
     }
 
-
     fun clearCategoriaResult() {
         _categoria.update { CategoriaUiState() }
     }
+
     // --------- NUEVO: Productos cargar lista ---------
     fun loadProductos() {
         // Lée desde Room -> Repository y publica los nombres

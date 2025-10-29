@@ -13,6 +13,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductosScreen(
     onSearch: (String) -> Unit,
@@ -33,7 +34,7 @@ fun ProductosScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.TopCenter
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth(0.9f),
@@ -47,7 +48,10 @@ fun ProductosScreen(
                 )
 
                 // ---- Buscador con lista desplegable ----
-                Box(modifier = Modifier.fillMaxWidth()) {
+                ExposedDropdownMenuBox(
+                    expanded = expanded && filteredProducts.isNotEmpty(),
+                    onExpandedChange = { expanded = it }
+                ) {
                     OutlinedTextField(
                         value = query,
                         onValueChange = {
@@ -64,10 +68,12 @@ fun ProductosScreen(
                                 Icon(Icons.Filled.Search, contentDescription = "Buscar")
                             }
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor() // ancla el menú al TextField
                     )
 
-                    DropdownMenu(
+                    ExposedDropdownMenu(
                         expanded = expanded && filteredProducts.isNotEmpty(),
                         onDismissRequest = { expanded = false },
                         modifier = Modifier.fillMaxWidth()
