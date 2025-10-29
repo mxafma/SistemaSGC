@@ -13,12 +13,23 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun CategoriaScreen(
-    onAddCategory: (String, String, String) -> Unit,
+    onAddCategory: (String, String) -> Unit,   // nombre, descripcion
     onCancel: () -> Unit
 ) {
     var nombre by rememberSaveable { mutableStateOf("") }
-    var id by rememberSaveable { mutableStateOf("") }
     var descripcion by rememberSaveable { mutableStateOf("") }
+
+    var nombreError by remember { mutableStateOf<String?>(null) }
+
+    fun recompute() {
+        nombreError = when {
+            nombre.isBlank()      -> "Requerido"
+            nombre.trim().length < 3 -> "Debe tener al menos 3 caracteres"
+            else                  -> null
+        }
+    }
+
+    LaunchedEffect(Unit) { recompute() }
 
     Surface(color = MaterialTheme.colorScheme.background) {
         Box(
@@ -38,43 +49,46 @@ fun CategoriaScreen(
                     textAlign = TextAlign.Center
                 )
 
+                // Nombre (obligatorio)
                 OutlinedTextField(
                     value = nombre,
-                    onValueChange = { nombre = it },
-                    label = { Text("Nombre") },
+                    onValueChange = {
+                        nombre = it
+                        recompute()
+                    },
+                    label = { Text("Nombre* (≥ 3)") },
                     singleLine = true,
+                    isError = nombreError != null,
+                    supportingText = { nombreError?.let { Text(it) } },
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                OutlinedTextField(
-                    value = id,
-                    onValueChange = { id = it },
-                    label = { Text("ID") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
+                // Descripción (opcional)
                 OutlinedTextField(
                     value = descripcion,
                     onValueChange = { descripcion = it },
-                    label = { Text("Descripción") },
+                    label = { Text("Descripción (opcional)") },
                     singleLine = false,
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     OutlinedButton(
                         onClick = onCancel,
                         modifier = Modifier
-                            .fillMaxWidth(0.45f)
+                            .weight(1f)
                             .height(50.dp),
                         shape = MaterialTheme.shapes.extraLarge
                     ) { Text("Cancelar") }
 
                     Button(
-                        onClick = { onAddCategory(nombre, id, descripcion) },
+                        onClick = { onAddCategory(nombre.trim(), descripcion.trim().ifBlank { "" }) },
+                        enabled = nombreError == null,
                         modifier = Modifier
-                            .fillMaxWidth(0.45f)
+                            .weight(1f)
                             .height(50.dp),
                         shape = MaterialTheme.shapes.extraLarge
                     ) { Text("Guardar") }
@@ -84,13 +98,22 @@ fun CategoriaScreen(
     }
 }
 
-@Preview(showBackground = true, showSystemUi = true, name = "AgregarCategoria – Light")
-@Preview(showBackground = true, showSystemUi = true, name = "AgregarCategoria – Dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(
+    showBackground = true,
+    showSystemUi = true,
+    name = "AgregarCategoria – Light"
+)
+@Preview(
+    showBackground = true,
+    showSystemUi = true,
+    name = "AgregarCategoria – Dark",
+    uiMode = Configuration.UI_MODE_NIGHT_YES
+)
 @Composable
 private fun CategoriaPreview() {
     MaterialTheme {
         CategoriaScreen(
-            onAddCategory = { _, _, _ -> },
+            onAddCategory = { _, _ -> },
             onCancel = {}
         )
     }

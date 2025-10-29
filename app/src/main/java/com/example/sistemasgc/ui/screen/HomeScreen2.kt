@@ -30,7 +30,7 @@ fun HomeScreen2(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Inicio (logeado)",
+                    text = "Bienvenido a la App",
                     style = MaterialTheme.typography.headlineSmall,
                     textAlign = TextAlign.Center
                 )

@@ -30,7 +30,12 @@ class UserRepository(
         }
     }
 
-    suspend fun register(name: String, email: String, phone: String, password: String): Result<Long> {
+    suspend fun register(
+        name: String,
+        email: String,
+        phone: String,
+        password: String
+    ): Result<Long> {
         val exists = userDao.getByEmail(email) != null
         if (exists) {
             return Result.failure(IllegalStateException("El correo ya está registrado"))
@@ -113,23 +118,27 @@ class UserRepository(
 
         return productoDao.insert(entity)
     }
-    suspend fun obtenerCategorias(): List<CategoriaEntity> = categoriaDao.getAllC() // ajusta al nombre real de tu DAO
+
+    suspend fun obtenerCategorias(): List<CategoriaEntity> =
+        categoriaDao.getAllC() // ajusta al nombre real de tu DAO
 
     suspend fun obtenerTodosLosProductos() = productoDao.getAll()
     suspend fun buscarProductos(q: String) = productoDao.search(q.trim())
+
     // -------------------- CATEGORIAS --------------------
-    suspend fun agregarCategoria(nombre: String, id: String, descripcion: String) {
-        if (categoriaDao.getByIdCategoria(id) != null) {
-            throw IllegalStateException("Ya existe una categoría con ID \"$id\"")
+    suspend fun agregarCategoria(nombre: String, descripcion: String) {
+        if (nombre.trim().length < 3) {
+            throw IllegalArgumentException("El nombre debe tener al menos 3 caracteres")
         }
-        if (categoriaDao.getByNombre(nombre) != null) {
-            throw IllegalStateException("Ya existe una categoría con nombre \"$nombre\"")
+
+        if (categoriaDao.getByNombre(nombre.trim()) != null) {
+            throw IllegalStateException("Ya existe una categoría con nombre \"${nombre.trim()}\"")
         }
+
         categoriaDao.insert(
             CategoriaEntity(
-                nombre = nombre,
-                idCategoria = id,
-                descripcion = descripcion
+                nombre = nombre.trim(),
+                descripcion = descripcion.trim()
             )
         )
     }

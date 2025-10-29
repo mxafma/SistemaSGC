@@ -89,7 +89,6 @@ data class ProductoUiState(
 
 data class CategoriaUiState(
     val nombre: String = "",
-    val id: String = "",
     val descripcion: String = "",
 
     val nombreError: String? = null,
@@ -447,36 +446,27 @@ class AuthViewModel(
         _categoria.update {
             it.copy(
                 nombre = value,
-                nombreError = if (value.isBlank()) "Requerido" else null
+                nombreError = when {
+                    value.isBlank() -> "Requerido"
+                    value.trim().length < 3 -> "Debe tener al menos 3 caracteres"
+                    else -> null
+                }
             )
         }
         recomputeCategoriaCanSubmit()
     }
 
-    fun onCategoriaIdChange(value: String) {
-        _categoria.update {
-            it.copy(
-                id = value,
-                idError = if (value.isBlank()) "Requerido" else null
-            )
-        }
-        recomputeCategoriaCanSubmit()
-    }
 
     fun onCategoriaDescripcionChange(value: String) {
-        _categoria.update {
-            it.copy(
-                descripcion = value,
-                descripcionError = if (value.isBlank()) "Requerido" else null
-            )
-        }
+
+        _categoria.update { it.copy(descripcion = value, descripcionError = null) }
         recomputeCategoriaCanSubmit()
     }
 
     private fun recomputeCategoriaCanSubmit() {
         val s = _categoria.value
-        val noErrors = listOf(s.nombreError, s.idError, s.descripcionError).all { it == null }
-        val filled = s.nombre.isNotBlank() && s.id.isNotBlank() && s.descripcion.isNotBlank()
+        val noErrors = listOf(s.nombreError /*, s.descripcionError*/).all { it == null }
+        val filled = s.nombre.isNotBlank() // descripción opcional
         _categoria.update { it.copy(canSubmit = noErrors && filled) }
     }
 
@@ -490,7 +480,6 @@ class AuthViewModel(
             val result = try {
                 repository.agregarCategoria(
                     nombre = s.nombre.trim(),
-                    id = s.id.trim(),
                     descripcion = s.descripcion.trim()
                 )
                 Result.success(Unit)
@@ -503,12 +492,12 @@ class AuthViewModel(
                 else it.copy(
                     isSubmitting = false,
                     success = false,
-                    errorMsg = result.exceptionOrNull()?.message
-                        ?: "No se pudo guardar la categoría"
+                    errorMsg = result.exceptionOrNull()?.message ?: "No se pudo guardar la categoría"
                 )
             }
         }
     }
+
 
     fun clearCategoriaResult() {
         _categoria.update { CategoriaUiState() }

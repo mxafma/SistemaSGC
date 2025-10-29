@@ -151,7 +151,6 @@ fun AppNavGraph(
                 composable(Route.Categorias.path) {
                     val catState = authViewModel.categoria.collectAsStateWithLifecycle().value
 
-                    // Si se guardó bien, volvemos y limpiamos estado
                     LaunchedEffect(catState.success) {
                         if (catState.success) {
                             navController.popBackStack()
@@ -160,15 +159,15 @@ fun AppNavGraph(
                     }
 
                     CategoriaScreen(
-                        onAddCategory = { nombre, id, descripcion ->
+                        onAddCategory = { nombre, descripcion ->
                             authViewModel.onCategoriaNombreChange(nombre)
-                            authViewModel.onCategoriaIdChange(id)
                             authViewModel.onCategoriaDescripcionChange(descripcion)
                             authViewModel.submitCategoria()
                         },
                         onCancel = { navController.popBackStack() }
                     )
                 }
+
                 composable(Route.Proveedores.path) {
                     ProveedoresScreen(
                         onSearch = { },

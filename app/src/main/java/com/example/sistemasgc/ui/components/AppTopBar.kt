@@ -17,6 +17,7 @@ import androidx.compose.material3.Text // Texto
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.* // remember / mutableStateOf
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.Color
 // AppTopBar.kt
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,7 +40,7 @@ fun AppTopBar(
         ),
         title = {
             Text(
-                text = "Demo Navegación Compose",
+                text = "Gestion Compras",
                 style = MaterialTheme.typography.titleLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis

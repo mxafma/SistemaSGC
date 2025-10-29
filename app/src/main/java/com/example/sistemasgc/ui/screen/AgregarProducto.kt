@@ -1,6 +1,7 @@
 package com.example.sistemasgc.ui.screen
 
-import android.content.res.Configuration
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -13,12 +14,19 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -26,9 +34,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import coil.compose.rememberAsyncImagePainter
 import java.io.File
+import android.content.res.Configuration
 
 @Composable
 fun AgregarProductoScreen(
@@ -48,7 +58,7 @@ fun AgregarProductoScreen(
 
     val ctx = LocalContext.current
 
-    // --------- Lanzadores Galería / Cámara ---------
+    // --------- Lanzadores Galería ---------
     val galleryPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri -> photoUri = uri?.toString() }
@@ -57,13 +67,48 @@ fun AgregarProductoScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri -> photoUri = uri?.toString() }
 
+    // --------- Cámara: permiso + take picture ---------
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
+
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
-    ) { success -> if (success) photoUri = pendingCameraUri?.toString() }
+    ) { success ->
+        if (success) photoUri = pendingCameraUri?.toString()
+    }
 
-    // --------- Categorías (DropdownMenu “normal”) ---------
-    // Normalizamos lista y filtramos al escribir
+    // Pedido de permiso CAMARA en runtime (API 23+)
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            // Crear el archivo y lanzar cámara
+            val imagesDir = File(ctx.cacheDir, "images").apply { mkdirs() }
+            val file = File.createTempFile("prod_", ".jpg", imagesDir)
+            val authority = "${ctx.packageName}.fileprovider"
+            pendingCameraUri = FileProvider.getUriForFile(ctx, authority, file)
+            pendingCameraUri?.let { cameraLauncher.launch(it) }
+        } else {
+            // opcional: mostrar un mensaje/snackbar si quieres
+        }
+    }
+
+    fun launchCameraWithPermission() {
+        val granted = ContextCompat.checkSelfPermission(
+            ctx, Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (granted) {
+            val imagesDir = File(ctx.cacheDir, "images").apply { mkdirs() }
+            val file = File.createTempFile("prod_", ".jpg", imagesDir)
+            val authority = "${ctx.packageName}.fileprovider"
+            pendingCameraUri = FileProvider.getUriForFile(ctx, authority, file)
+            pendingCameraUri?.let { cameraLauncher.launch(it) }
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    // --------- Categorías (DropdownMenu normal) ---------
     val catOptions = remember(initialCategories) {
         initialCategories.map { it.trim() }.filter { it.isNotEmpty() }.distinct().sorted()
     }
@@ -122,16 +167,15 @@ fun AgregarProductoScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // ---- Categoría (opcional): escribible + botón para desplegar lista ----
-                // Usamos un Box como ancla del DropdownMenu
+                // ---- Categoría (opcional): escribible + desplegable ----
                 Box(modifier = Modifier.fillMaxWidth()) {
                     OutlinedTextField(
                         value = categoria,
                         onValueChange = { categoria = it },
                         label = { Text("Categoría (opcional)") },
                         trailingIcon = {
-                            androidx.compose.material3.IconButton(onClick = { catExpanded = !catExpanded }) {
-                                androidx.compose.material3.Icon(
+                            IconButton(onClick = { catExpanded = !catExpanded }) {
+                                Icon(
                                     imageVector = Icons.Filled.ArrowDropDown,
                                     contentDescription = "Ver categorías"
                                 )
@@ -165,9 +209,7 @@ fun AgregarProductoScreen(
                         .fillMaxWidth()
                         .height(50.dp),
                     shape = MaterialTheme.shapes.extraLarge
-                ) {
-                    Text("Crear categoría")
-                }
+                ) { Text("Crear categoría") }
 
                 // ---- Foto: Galería / Cámara (fila pareja) ----
                 Row(
@@ -192,13 +234,7 @@ fun AgregarProductoScreen(
                     ) { Text(if (photoUri == null) "Galería" else "Cambiar foto") }
 
                     Button(
-                        onClick = {
-                            val imagesDir = File(ctx.cacheDir, "images").apply { mkdirs() }
-                            val file = File.createTempFile("prod_", ".jpg", imagesDir)
-                            val authority = "${ctx.packageName}.fileprovider"
-                            pendingCameraUri = FileProvider.getUriForFile(ctx, authority, file)
-                            pendingCameraUri?.let { cameraLauncher.launch(it) }
-                        },
+                        onClick = { launchCameraWithPermission() },
                         modifier = Modifier
                             .weight(1f)
                             .height(48.dp),
