@@ -8,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -233,33 +234,58 @@ fun DatePickerDialog(
     onDateSelected: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Seleccionar Fecha") },
-        text = {
-            Column {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Por ahora puedes usar la fecha actual:")
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val calendar = Calendar.getInstance()
-                    val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-                    val fechaActual = dateFormat.format(calendar.time)
-                    onDateSelected(fechaActual)
+    var showNativeDatePicker by remember { mutableStateOf(true) }
+    var selectedDate by remember { mutableStateOf(System.currentTimeMillis()) }
+
+    // Usar el DatePicker nativo de Android
+    if (showNativeDatePicker) {
+        AndroidDatePicker(
+            onDateSelected = { year, month, day ->
+                val calendar = Calendar.getInstance().apply {
+                    set(year, month, day)
                 }
-            ) {
-                Text("Usar fecha actual")
+                selectedDate = calendar.timeInMillis
+                showNativeDatePicker = false
+
+                // Formatear la fecha
+                val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                val fechaFormateada = dateFormat.format(Date(selectedDate))
+                onDateSelected(fechaFormateada)
+            },
+            onDismiss = {
+                showNativeDatePicker = false
+                onDismiss()
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar")
-            }
+        )
+    }
+}
+
+// Componente para el DatePicker nativo de Android
+@Composable
+fun AndroidDatePicker(
+    onDateSelected: (Int, Int, Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val calendar = Calendar.getInstance()
+
+    LaunchedEffect(Unit) {
+        val datePickerDialog = android.app.DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                onDateSelected(year, month, dayOfMonth)
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        )
+
+        datePickerDialog.setOnCancelListener {
+            onDismiss()
         }
-    )
+
+        datePickerDialog.show()
+    }
 }
 
 
