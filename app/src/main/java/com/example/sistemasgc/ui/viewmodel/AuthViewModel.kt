@@ -362,8 +362,13 @@ class AuthViewModel(
     }
 
     fun onProveedorDireccionChange(value: String) {
-        // ✅ Dirección es opcional - sin validación de error
-        _proveedor.update { it.copy(direccion = value, direccionError = null) }
+        _proveedor.update {
+            it.copy(
+                direccion = value,
+                direccionError = validateDireccion(value) // ← ¡AGREGA ESTA LÍNEA!
+            )
+        }
+        recomputeProveedorCanSubmit() // ← También actualiza el estado del botón
     }
 
     private fun recomputeProveedorCanSubmit() {
@@ -423,65 +428,7 @@ class AuthViewModel(
         _proveedor.update { it.copy(success = false, errorMsg = null) }
     }
 
-    // --------- VALIDACIÓN DE RUT CHILENO ---------
 
-    private fun validateRutChileno(rut: String): String? {
-        if (rut.isBlank()) return "El RUT es obligatorio"
-
-        val rutLimpio = rut.replace(".", "")
-            .replace("-", "")
-            .replace(" ", "")
-            .uppercase()
-
-        if (rutLimpio.length < 2) return "RUT demasiado corto"
-
-        val numeroStr = rutLimpio.substring(0, rutLimpio.length - 1)
-        val dvIngresado = rutLimpio.substring(rutLimpio.length - 1)
-
-        val numero = try {
-            numeroStr.toLong()
-        } catch (e: NumberFormatException) {
-            return "RUT inválido"
-        }
-
-        if (numero <= 0) return "RUT inválido"
-
-        if (!dvIngresado.matches(Regex("[0-9K]"))) {
-            return "RUT inválido"
-        }
-
-        // ✅ Fórmula para calcular dígito verificador
-        val dvCalculado = calcularDigitoVerificadorRUT(numero)
-        val dvCalculadoStr = if (dvCalculado == 10) "K" else dvCalculado.toString()
-
-        return if (dvIngresado == dvCalculadoStr) {
-            null
-        } else {
-            "RUT inválido" // ← Solo muestra "RUT inválido"
-        }
-    }
-
-    // ✅ Fórmula del dígito verificador del RUT
-    private fun calcularDigitoVerificadorRUT(rut: Long): Int {
-        var suma = 0
-        var multiplicador = 2
-        var rutTemp = rut
-
-        while (rutTemp > 0) {
-            val digito = (rutTemp % 10).toInt()
-            suma += digito * multiplicador
-            rutTemp /= 10
-            multiplicador++
-            if (multiplicador > 7) multiplicador = 2
-        }
-
-        val resto = suma % 11
-        return when (val dv = 11 - resto) {
-            11 -> 0
-            10 -> 10
-            else -> dv
-        }
-    }
 
     // --------- REGISTER ---------
 

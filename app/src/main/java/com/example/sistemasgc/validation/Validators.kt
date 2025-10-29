@@ -42,14 +42,74 @@ fun validateConfirm(pass: String, confirm: String): String? {          // Confir
     return if (pass != confirm) "Las contraseñas no coinciden" else null // Deben ser iguales
 }
 
-fun validateRut(rut: String): String? {
-    return if (rut.isBlank()) "El RUT es obligatorio"
-    else if (rut.length < 8) "RUT muy corto"
-    else null
+// --------- VALIDACIÓN DE RUT CHILENO MEJORADA ---------
+fun validateRutChileno(rut: String): String? {
+    if (rut.isBlank()) return "El RUT es obligatorio"
+
+    val rutLimpio = rut.cleanRut()
+
+    if (rutLimpio.length < 2) return "RUT demasiado corto"
+
+    val numeroStr = rutLimpio.substring(0, rutLimpio.length - 1)
+    val dvIngresado = rutLimpio.substring(rutLimpio.length - 1)
+
+    val numero = try {
+        numeroStr.toLong()
+    } catch (e: NumberFormatException) {
+        return "RUT inválido"
+    }
+
+    if (numero <= 0) return "RUT inválido"
+
+    if (!dvIngresado.matches(Regex("[0-9K]"))) {
+        return "RUT inválido"
+    }
+
+    val dvCalculado = calcularDigitoVerificadorRUT(numero)
+    val dvCalculadoStr = if (dvCalculado == 10) "K" else dvCalculado.toString()
+
+    return if (dvIngresado == dvCalculadoStr) {
+        null
+    } else {
+        "RUT inválido"
+    }
 }
 
+// ✅ Fórmula del dígito verificador del RUT
+private fun calcularDigitoVerificadorRUT(rut: Long): Int {
+    var suma = 0
+    var multiplicador = 2
+    var rutTemp = rut
+
+    while (rutTemp > 0) {
+        val digito = (rutTemp % 10).toInt()
+        suma += digito * multiplicador
+        rutTemp /= 10
+        multiplicador++
+        if (multiplicador > 7) multiplicador = 2
+    }
+
+    val resto = suma % 11
+    return when (val dv = 11 - resto) {
+        11 -> 0
+        10 -> 10
+        else -> dv
+    }
+}
+
+// Función de extensión para limpiar RUT
+private fun String.cleanRut(): String {
+    return this.replace(".", "")
+        .replace("-", "")
+        .replace(" ", "")
+        .uppercase()
+}
+
+// Valida dirección (opcional)
 fun validateDireccion(direccion: String): String? {
-    return if (direccion.isBlank()) "La dirección es obligatoria"
-    else if (direccion.length < 5) "Dirección muy corta"
-    else null
+    // Dirección es opcional, solo validar si no está vacía
+    if (direccion.isNotBlank() && direccion.length < 5) {
+        return "Dirección muy corta (mín. 5 caracteres)"
+    }
+    return null
 }
