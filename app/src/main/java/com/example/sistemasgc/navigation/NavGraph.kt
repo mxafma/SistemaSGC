@@ -141,10 +141,17 @@ fun AppNavGraph(
                     )
                 }
                 composable(Route.Productos.path) {
-                    ProductosScreen(
-                        onSearch = { },
-                        onAddNewProduct = { navController.navigate(Route.AgregarProducto.path) }
+                    val productos = authViewModel.productosNombres.collectAsStateWithLifecycle(emptyList()).value
 
+                    // Recarga SIEMPRE cuando entras a la pantalla
+                    LaunchedEffect(Unit) {
+                        authViewModel.loadProductos()
+                    }
+
+                    ProductosScreen(
+                        onSearch = { /* lógica de búsqueda si quieres */ },
+                        onAddNewProduct = { navController.navigate(Route.AgregarProducto.path) },
+                        productosExistentes = productos
                     )
                 }
 

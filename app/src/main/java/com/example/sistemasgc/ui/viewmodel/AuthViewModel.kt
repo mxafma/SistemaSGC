@@ -92,7 +92,6 @@ data class CategoriaUiState(
     val descripcion: String = "",
 
     val nombreError: String? = null,
-    val idError: String? = null,
     val descripcionError: String? = null,
 
     val isSubmitting: Boolean = false,
@@ -123,7 +122,8 @@ class AuthViewModel(
     // --------- NUEVO: Producto ---------
     private val _producto = MutableStateFlow(ProductoUiState())
     val producto: StateFlow<ProductoUiState> = _producto
-
+    private val _productosNombres = MutableStateFlow<List<String>>(emptyList())
+    val productosNombres: StateFlow<List<String>> = _productosNombres
     // --------- Categorias ---------
     private val _categoria = MutableStateFlow(CategoriaUiState())
     val categoria: StateFlow<CategoriaUiState> = _categoria
@@ -431,8 +431,14 @@ class AuthViewModel(
     }
 
     // Sugerencias de categorías para el combo
-    suspend fun getCategoriasSugeridas(): List<String> =
-        repository.obtenerCategorias().map { it.nombre }.distinct().sorted()
+// Sugerencias de categorías para el combo (solo nombres)
+    suspend fun getCategoriasSugeridas(): List<String> {
+        return try {
+            repository.obtenerCategoriasNombres()   // <- este método lo agregamos en el repo
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
 
     // --------- NUEVO: Cerrar sesión ---------
     fun logout() {
@@ -501,5 +507,17 @@ class AuthViewModel(
 
     fun clearCategoriaResult() {
         _categoria.update { CategoriaUiState() }
+    }
+    // --------- NUEVO: Productos cargar lista ---------
+    fun loadProductos() {
+        // Lée desde Room -> Repository y publica los nombres
+        viewModelScope.launch {
+            val nombres = try {
+                repository.obtenerTodosLosProductos().map { it.nombre }
+            } catch (e: Exception) {
+                emptyList()
+            }
+            _productosNombres.value = nombres.distinct().sorted()
+        }
     }
 }

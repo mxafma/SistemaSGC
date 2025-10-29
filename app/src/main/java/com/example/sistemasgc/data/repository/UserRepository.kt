@@ -141,5 +141,8 @@ class UserRepository(
                 descripcion = descripcion.trim()
             )
         )
+
     }
+    suspend fun obtenerCategoriasNombres(): List<String> =
+        categoriaDao.getAllC().map { it.nombre }.distinct().sorted()
 }

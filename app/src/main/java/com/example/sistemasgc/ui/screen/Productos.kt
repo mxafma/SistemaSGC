@@ -16,19 +16,29 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun ProductosScreen(
     onSearch: (String) -> Unit,
-    onAddNewProduct: () -> Unit
+    onAddNewProduct: () -> Unit,
+    productosExistentes: List<String> = emptyList()
 ) {
+    var query by rememberSaveable { mutableStateOf("") }
+    var expanded by remember { mutableStateOf(false) }
+
+    // Si no hay productos, se muestra lista vacía
+    val filteredProducts = remember(query, productosExistentes) {
+        if (query.isBlank()) productosExistentes
+        else productosExistentes.filter { it.contains(query, ignoreCase = true) }
+    }
+
     Surface(color = MaterialTheme.colorScheme.background) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp),
-            contentAlignment = Alignment.Center // 👈 centra todo vertical y horizontalmente
+            contentAlignment = Alignment.Center
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(0.9f),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(24.dp) // espacio entre elementos
+                verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
                 Text(
                     text = "Productos",
@@ -36,24 +46,52 @@ fun ProductosScreen(
                     textAlign = TextAlign.Center
                 )
 
-                // ---- Buscador ----
-                var query by rememberSaveable { mutableStateOf("") }
+                // ---- Buscador con lista desplegable ----
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = {
+                            query = it
+                            expanded = true // siempre se abre cuando escribes
+                        },
+                        label = { Text("Buscar producto") },
+                        singleLine = true,
+                        trailingIcon = {
+                            IconButton(
+                                onClick = { onSearch(query) },
+                                enabled = query.isNotBlank()
+                            ) {
+                                Icon(Icons.Filled.Search, contentDescription = "Buscar")
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    label = { Text("Buscar producto") },
-                    singleLine = true,
-                    trailingIcon = {
-                        IconButton(
-                            onClick = { onSearch(query) },
-                            enabled = query.isNotBlank()
-                        ) {
-                            Icon(Icons.Filled.Search, contentDescription = "Buscar")
+                    DropdownMenu(
+                        expanded = expanded && filteredProducts.isNotEmpty(),
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        filteredProducts.forEach { producto ->
+                            DropdownMenuItem(
+                                text = { Text(producto) },
+                                onClick = {
+                                    query = producto
+                                    expanded = false
+                                    onSearch(producto)
+                                }
+                            )
                         }
-                    },
-                    modifier = Modifier.fillMaxWidth(0.85f)
-                )
+
+                        // Si no hay coincidencias
+                        if (filteredProducts.isEmpty()) {
+                            DropdownMenuItem(
+                                text = { Text("(sin resultados)") },
+                                onClick = { expanded = false }
+                            )
+                        }
+                    }
+                }
 
                 // ---- Botón agregar ----
                 Button(
@@ -71,7 +109,6 @@ fun ProductosScreen(
 }
 
 /* =================== PREVIEWS =================== */
-
 @Preview(
     name = "Productos – Light",
     showBackground = true,
@@ -88,7 +125,8 @@ private fun ProductosScreenPreview() {
     MaterialTheme {
         ProductosScreen(
             onSearch = {},
-            onAddNewProduct = {}
+            onAddNewProduct = {},
+            productosExistentes = listOf("Manzanas", "Peras", "Tomates", "Cebollas")
         )
     }
 }

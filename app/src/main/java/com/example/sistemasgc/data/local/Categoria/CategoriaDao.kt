@@ -15,4 +15,5 @@ interface CategoriaDao {
 
     @Query("SELECT * FROM categorias ORDER BY nombre")
     suspend fun getAllC(): List<CategoriaEntity>
+
 }
