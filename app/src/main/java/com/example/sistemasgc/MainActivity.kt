@@ -11,7 +11,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.example.sistemasgc.data.local.database.AppDatabase
-import com.example.sistemasgc.data.repository.UserRepository
+import com.example.sistemasgc.data.repository.DataRepository
 import com.example.sistemasgc.navigation.AppNavGraph
 import com.example.sistemasgc.ui.viewmodel.AuthViewModel
 import com.example.sistemasgc.ui.viewmodel.AuthViewModelFactory
@@ -34,7 +34,7 @@ fun AppRoot() {
     val productoDao = db.productoDao()
     val categoriaDao = db.categoriaDao()
 
-    val userRepository = UserRepository(
+    val userRepository = DataRepository(
         userDao = userDao,
         proveedorDao = proveedorDao,
         productoDao = productoDao,

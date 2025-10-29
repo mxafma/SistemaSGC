@@ -17,7 +17,19 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp                            // DPs
 import androidx.lifecycle.compose.collectAsStateWithLifecycle // Observa StateFlow con lifecycle
 import com.example.sistemasgc.ui.viewmodel.AuthViewModel         // Nuestro ViewModel
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
+// Animaciones
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 
+// Formas y gráficos
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.graphicsLayer
+
+// Icono del “check”
+import androidx.compose.material.icons.filled.Check
 
 //1 Lo primero que creamos en el archivo
 @Composable                                                  // Pantalla Login conectada al VM
@@ -29,9 +41,12 @@ fun LoginScreenVm(
 
     val state by vm.login.collectAsStateWithLifecycle()      // Observa el StateFlow en tiempo real
 
-    if (state.success) {                                     // Si login fue exitoso…
-        vm.clearLoginResult()                                // Limpia banderas
-        onLoginOkNavigateHome()                              // Navega a Home
+    LaunchedEffect(state.success) {
+        if (state.success) {
+            delay(1000)                // se alcanza a ver el “check” del botón
+            vm.clearLoginResult()
+            onLoginOkNavigateHome()
+        }
     }
 
     LoginScreen(                                             // Delegamos a UI presentacional
@@ -45,7 +60,8 @@ fun LoginScreenVm(
         onEmailChange = vm::onLoginEmailChange,              // Handler email
         onPassChange = vm::onLoginPassChange,                // Handler pass
         onSubmit = vm::submitLogin,                          // Acción enviar
-        onGoRegister = onGoRegister                          // Ir a Registro
+        onGoRegister = onGoRegister,                         // Ir a Registro
+        success = state.success                               // ✅ pasa el success real del VM
     )
 }
 
@@ -53,9 +69,10 @@ fun LoginScreenVm(
 //2 modificamos la funcion principal haciendo private y agregando variable y elementos dle fiormulario
 @Composable // Pantalla Login (solo navegación, sin formularios)
 private fun LoginScreen(
-    //3 Modificamos estos parametros
+
     email: String,                                           // Campo email
-    pass: String,                                            // Campo contraseña
+    pass: String,
+    success: Boolean,                                        // ✅ recibe success desde el VM
     emailError: String?,                                     // Error de email
     passError: String?,                                      // Error de password (opcional)
     canSubmit: Boolean,                                      // Habilitar botón
@@ -133,19 +150,14 @@ private fun LoginScreen(
             Spacer(Modifier.height(16.dp))                   // Espacio
 
             // ---------- BOTÓN ENTRAR ----------
-            Button(
-                onClick = onSubmit,                          // Envía login
-                enabled = canSubmit && !isSubmitting,        // Solo si válido y no cargando
-                modifier = Modifier.fillMaxWidth()           // Ancho completo
-            ) {
-                if (isSubmitting) {                          // UI de carga
-                    CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Validando...")
-                } else {
-                    Text("Entrar")
-                }
-            }
+            AnimatedLoginButton(
+                onClick = onSubmit,
+                enabled = canSubmit && !isSubmitting,
+                isSubmitting = isSubmitting,
+
+                success = success,                           // ✅ usa el parámetro recibido
+                modifier = Modifier.fillMaxWidth()
+            )
 
             if (errorMsg != null) {                          // Error global (credenciales)
                 Spacer(Modifier.height(8.dp))
@@ -163,7 +175,46 @@ private fun LoginScreen(
     }
 }
 
+@Composable
+private fun AnimatedLoginButton(
+    onClick: () -> Unit,
+    enabled: Boolean,
+    isSubmitting: Boolean,
+    success: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val scale by animateFloatAsState(if (isSubmitting) 0.96f else 1f, label = "scale")
+    val corner by animateDpAsState(if (success) 28.dp else 8.dp, label = "corner")
+    val bg by animateColorAsState(
+        targetValue = if (success) MaterialTheme.colorScheme.secondary
+        else MaterialTheme.colorScheme.primary,
+        label = "bg"
+    )
 
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier
+            .graphicsLayer(scaleX = scale, scaleY = scale)
+            .height(50.dp),
+        shape = RoundedCornerShape(corner),
+        colors = ButtonDefaults.buttonColors(containerColor = bg)
+    ) {
+        when {
+            isSubmitting -> {
+                CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Validando...")
+            }
+            success -> {
+                Icon(Icons.Filled.Check, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Credenciales Validas!")
+            }
+            else -> Text("Entrar")
+        }
+    }
+}
 
 
 
@@ -186,6 +237,7 @@ private fun LoginScreenPreview() {
         LoginScreen(
             email = "user@example.com",
             pass = "password",
+            success = false,                 // ✅ agrega el parámetro en el preview
             emailError = null,
             passError = null,
             canSubmit = true,

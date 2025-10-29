@@ -47,7 +47,7 @@ fun AppNavGraph(
     val goAgregarProveedores = { go(Route.AgregarProveedor.path) }
     val goCompras    = { go(Route.Compras.path) }
     val goDetallesCompras = {go(Route.DetallesCompras.path)}
-    val goReportes = {go(Route.Reportes.path)}
+    val goReportes = {go(Route.Reportes.path)} //proximo
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -63,7 +63,7 @@ fun AppNavGraph(
                     )
                 )
             } else {
-                // 🔁 Necesitas extender tu defaultDrawerItems o crear otro helper
+
                 AppDrawer(
                     currentRoute = navController.currentBackStackEntry?.destination?.route,
                     items = defaultDrawerItems(
@@ -109,8 +109,8 @@ fun AppNavGraph(
                 }
                 composable(Route.Home2.path) {
                     HomeScreen2(
-                        onGoLogin = goLogin,          // opcional
-                        onGoRegister = goRegister,    // opcional
+                        onGoLogin = goLogin,
+                        onGoRegister = goRegister,
                         onGoProveedores = goProveedores,
                         onGoProductos = goProductos,
                         onGoCompras = goCompras

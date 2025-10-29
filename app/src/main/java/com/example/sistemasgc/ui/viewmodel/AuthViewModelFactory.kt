@@ -2,11 +2,11 @@ package com.example.sistemasgc.ui.viewmodel
 
 import androidx.lifecycle.ViewModel                              // Tipo base ViewModel
 import androidx.lifecycle.ViewModelProvider                      // Factory de ViewModels
-import com.example.sistemasgc.data.repository.UserRepository   // Repositorio a inyectar
+import com.example.sistemasgc.data.repository.DataRepository   // Repositorio a inyectar
 
-// Factory simple para crear AuthViewModel con su UserRepository.
+// Factory simple para crear AuthViewModel con su DataRepository.
 class AuthViewModelFactory(
-    private val repository: UserRepository                       // Dependencia que inyectaremos
+    private val repository: DataRepository                       // Dependencia que inyectaremos
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")                                   // Evitar warning de cast genérico

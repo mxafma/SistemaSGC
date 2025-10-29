@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import com.example.sistemasgc.domain.validation.*
-import com.example.sistemasgc.data.repository.UserRepository
+import com.example.sistemasgc.data.repository.DataRepository
 import com.example.sistemasgc.data.local.Proveedor.ProveedorEntity
 import java.util.*
 import java.text.SimpleDateFormat
@@ -125,7 +125,7 @@ data class ComprasUiState(
 
 class AuthViewModel(
     // Repositorio real (Room/SQLite o el que uses)
-    private val repository: UserRepository
+    private val repository: DataRepository
 ) : ViewModel() {
 
     // --------- NUEVO: estado global de sesión ---------

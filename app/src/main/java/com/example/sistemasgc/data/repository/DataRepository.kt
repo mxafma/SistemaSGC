@@ -13,7 +13,7 @@ import com.example.sistemasgc.data.local.Categoria.CategoriaEntity
 import com.example.sistemasgc.data.local.producto.ProductoDao
 import com.example.sistemasgc.data.local.producto.ProductoEntity
 
-class UserRepository(
+class DataRepository(
     private val userDao: UserDao,
     private val proveedorDao: ProveedorDao,
     private val productoDao: ProductoDao,
