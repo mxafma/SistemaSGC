@@ -15,8 +15,9 @@ import com.example.sistemasgc.data.local.Proveedor.ProveedorEntity
 import com.example.sistemasgc.data.local.Categoria.CategoriaDao
 import com.example.sistemasgc.data.local.Categoria.CategoriaEntity
 
-import com.example.sistemasgc.data.local.Producto.ProductoDao
-import com.example.sistemasgc.data.local.Producto.ProductoEntity
+// ✅ IMPORTS ACTUALIZADOS PARA PRODUCTO (paquete en minúsculas)
+import com.example.sistemasgc.data.local.producto.ProductoDao
+import com.example.sistemasgc.data.local.producto.ProductoEntity
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,7 +30,7 @@ import kotlinx.coroutines.launch
         ProductoEntity::class,
         CategoriaEntity::class
     ],
-    version = 4,                // ✅ SUBE VERSIÓN PARA FORZAR RECREACIÓN
+    version = 5,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -51,15 +52,14 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     DB_NAME
                 )
+                    // 🔹 Callback de seed inicial (solo al crear)
                     .addCallback(object : RoomDatabase.Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)
                             CoroutineScope(Dispatchers.IO).launch {
-                                // Reusar la misma instancia
                                 val appDb = getInstance(context)
                                 val userDao = appDb.userDao()
                                 val proveedorDao = appDb.proveedorDao()
-
 
                                 val seedUsers = listOf(
                                     UserEntity(
@@ -93,17 +93,22 @@ abstract class AppDatabase : RoomDatabase() {
                                     )
                                 )
 
-                                if (userDao.count() == 0) {
-                                    seedUsers.forEach { userDao.insert(it) }
+                                try {
+                                    // ⚠️ Estos métodos deben existir en tus DAOs
+                                    if (userDao.count() == 0) {
+                                        seedUsers.forEach { userDao.insert(it) }
+                                    }
+                                    if (proveedorDao.count() == 0) {
+                                        seedProveedores.forEach { proveedorDao.insert(it) }
+                                    }
+                                } catch (_: Exception) {
+                                    // Ignora seeds si los DAOs no tienen count() en este momento
                                 }
-                                if (proveedorDao.count() == 0) {
-                                    seedProveedores.forEach { proveedorDao.insert(it) }
-                                }
-                                // (Opcional) puedes sembrar productos aquí si quieres.
                             }
                         }
                     })
-                    .fallbackToDestructiveMigration() // en dev: recrea al cambiar versión
+                    // recrea la BD automáticamente si cambias versión/esquema
+                    .fallbackToDestructiveMigration()
                     .build()
 
                 INSTANCE = instance

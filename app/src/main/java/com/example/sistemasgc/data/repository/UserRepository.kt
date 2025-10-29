@@ -1,14 +1,18 @@
 package com.example.sistemasgc.data.repository
 
-import com.example.sistemasgc.data.local.user.UserDao       // DAO de usuario
-import com.example.sistemasgc.data.local.user.UserEntity    // Entidad de usuario
+import com.example.sistemasgc.data.local.user.UserDao
+import com.example.sistemasgc.data.local.user.UserEntity
+
 import com.example.sistemasgc.data.local.Proveedor.ProveedorDao
 import com.example.sistemasgc.data.local.Proveedor.ProveedorEntity
-import com.example.sistemasgc.data.local.Producto.ProductoDao
-import com.example.sistemasgc.data.local.Producto.ProductoEntity
+
 import com.example.sistemasgc.data.local.Categoria.CategoriaDao
 import com.example.sistemasgc.data.local.Categoria.CategoriaEntity
-// Repositorio: orquesta reglas de negocio para login/registro sobre los DAOs.
+
+// ✅ Producto (paquete en minúsculas)
+import com.example.sistemasgc.data.local.producto.ProductoDao
+import com.example.sistemasgc.data.local.producto.ProductoEntity
+
 class UserRepository(
     private val userDao: UserDao,
     private val proveedorDao: ProveedorDao,
@@ -17,8 +21,6 @@ class UserRepository(
 ) {
 
     // -------------------- USUARIOS --------------------
-
-    // Login: busca por email y valida contraseña
     suspend fun login(email: String, password: String): Result<UserEntity> {
         val user = userDao.getByEmail(email)
         return if (user != null && user.password == password) {
@@ -28,7 +30,6 @@ class UserRepository(
         }
     }
 
-    // Registro: valida no duplicado y crea usuario
     suspend fun register(name: String, email: String, phone: String, password: String): Result<Long> {
         val exists = userDao.getByEmail(email) != null
         if (exists) {
@@ -46,7 +47,6 @@ class UserRepository(
     }
 
     // -------------------- PROVEEDORES --------------------
-
     suspend fun proveedor(
         Pname: String,
         Prut: String,
@@ -75,39 +75,62 @@ class UserRepository(
     }
 
     // -------------------- PRODUCTOS --------------------
-
-    /**
-     * Agrega un producto; lanza IllegalStateException si ya existe por idProducto o por nombre.
-     * Nota: tu ViewModel captura la excepción y construye un Result allí.
-     */
-    suspend fun agregarProducto(nombre: String, id: String, categoria: String) {
-        // Chequeos de unicidad simples (ajusta reglas si quieres permitir repetidos)
-        val dupById = productoDao.getByIdProducto(id)
-        if (dupById != null) {
-            throw IllegalStateException("Ya existe un producto con ID \"$id\"")
+    suspend fun agregarProducto(
+        nombre: String,
+        sku: String?,
+        photoUri: String?,
+        categoria: String?
+    ): Long {
+        val cleanName = nombre.trim()
+        if (cleanName.length < 4) {
+            throw IllegalArgumentException("El nombre debe tener al menos 4 caracteres")
         }
 
-        val dupByNombre = productoDao.getByNombre(nombre)
+        // Unicidad por nombre (ajusta si quieres permitir duplicados)
+        val dupByNombre = productoDao.getByNombre(cleanName)
         if (dupByNombre != null) {
-            throw IllegalStateException("Ya existe un producto con nombre \"$nombre\"")
+            throw IllegalStateException("Ya existe un producto con nombre \"$cleanName\"")
         }
 
-        productoDao.insert(
-            ProductoEntity(
-                nombre = nombre,
-                idProducto = id,
-                categoria = categoria
-            )
-        )
-    }
+        // SKU opcional, pero si viene debe ser SOLO numérico y único
+        val cleanSku = sku?.trim()?.ifBlank { null }
+        if (cleanSku != null) {
+            if (!cleanSku.all { it.isDigit() }) {
+                throw IllegalArgumentException("El SKU debe contener solo números")
+            }
+            val dupBySku = productoDao.getBySku(cleanSku)
+            if (dupBySku != null) {
+                throw IllegalStateException("Ya existe un producto con SKU \"$cleanSku\"")
+            }
+        }
 
-    suspend fun obtenerTodosLosProductos(): List<ProductoEntity> {
-        return productoDao.getAll()
+        val entity = ProductoEntity(
+            nombre = cleanName,
+            sku = cleanSku,
+            photoUri = photoUri,
+            categoria = categoria?.trim()?.ifBlank { null }
+        )
+
+        return productoDao.insert(entity)
     }
+    suspend fun obtenerCategorias(): List<CategoriaEntity> = categoriaDao.getAllC() // ajusta al nombre real de tu DAO
+
+    suspend fun obtenerTodosLosProductos() = productoDao.getAll()
+    suspend fun buscarProductos(q: String) = productoDao.search(q.trim())
     // -------------------- CATEGORIAS --------------------
     suspend fun agregarCategoria(nombre: String, id: String, descripcion: String) {
-        if (categoriaDao.getByIdCategoria(id) != null) throw IllegalStateException("Ya existe una categoría con ID \"$id\"")
-        if (categoriaDao.getByNombre(nombre) != null) throw IllegalStateException("Ya existe una categoría con nombre \"$nombre\"")
-        categoriaDao.insert(CategoriaEntity(nombre = nombre, idCategoria = id, descripcion = descripcion))
+        if (categoriaDao.getByIdCategoria(id) != null) {
+            throw IllegalStateException("Ya existe una categoría con ID \"$id\"")
+        }
+        if (categoriaDao.getByNombre(nombre) != null) {
+            throw IllegalStateException("Ya existe una categoría con nombre \"$nombre\"")
+        }
+        categoriaDao.insert(
+            CategoriaEntity(
+                nombre = nombre,
+                idCategoria = id,
+                descripcion = descripcion
+            )
+        )
     }
 }

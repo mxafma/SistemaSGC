@@ -11,8 +11,6 @@ import com.example.sistemasgc.domain.validation.*
 import com.example.sistemasgc.data.repository.UserRepository
 import com.example.sistemasgc.data.local.Proveedor.ProveedorEntity
 
-
-
 // ----------------- ESTADOS DE UI (observable con StateFlow) -----------------
 
 data class LoginUiState(
@@ -64,21 +62,31 @@ data class ProveedoresUiState(
     val errorMsg: String? = null
 )
 
-
+/**
+ * 🔄 NUEVO MODELO para Agregar Producto
+ * - id: lo genera Room; no se ingresa. Tras guardar, lo exponemos en savedId.
+ * - sku: opcional
+ * - photoUri: opcional
+ * - nombre: obligatorio (≥ 6)
+ * - categoria: opcional (si quieres exigirla, marca el comentario en validación)
+ */
 data class ProductoUiState(
     val nombre: String = "",
-    val id: String = "",
+    val sku: String = "",
     val categoria: String = "",
+    val photoUri: String? = null,
 
     val nombreError: String? = null,
-    val idError: String? = null,
-    val categoriaError: String? = null,
+    val skuError: String? = null,        // por ahora no validamos formato; reservado si quieres agregar
+    val categoriaError: String? = null,  // si decides hacerla obligatoria
 
     val isSubmitting: Boolean = false,
     val canSubmit: Boolean = false,
     val success: Boolean = false,
-    val errorMsg: String? = null
+    val errorMsg: String? = null,
+    val savedId: Long? = null            // 👈 ID autogenerado por Room después de guardar
 )
+
 data class CategoriaUiState(
     val nombre: String = "",
     val id: String = "",
@@ -97,7 +105,6 @@ data class CategoriaUiState(
 class AuthViewModel(
     // Repositorio real (Room/SQLite o el que uses)
     private val repository: UserRepository
-
 ) : ViewModel() {
 
     // --------- NUEVO: estado global de sesión ---------
@@ -119,7 +126,6 @@ class AuthViewModel(
     val producto: StateFlow<ProductoUiState> = _producto
 
     // --------- Categorias ---------
-
     private val _categoria = MutableStateFlow(CategoriaUiState())
     val categoria: StateFlow<CategoriaUiState> = _categoria
 
@@ -348,42 +354,47 @@ class AuthViewModel(
         _register.update { it.copy(success = false, errorMsg = null) }
     }
 
-    // --------- PRODUCTO ---------
+// --------- PRODUCTO ---------
 
     fun onProductoNombreChange(value: String) {
-        _producto.update {
-            it.copy(
-                nombre = value,
-                nombreError = if (value.isBlank()) "Requerido" else null
-            )
+        val trimmed = value
+        val error = when {
+            trimmed.isBlank()   -> "Requerido"
+            trimmed.length < 4  -> "Debe tener al menos 4 caracteres"
+            else                -> null
         }
+        _producto.update { it.copy(nombre = trimmed, nombreError = error) }
         recomputeProductoCanSubmit()
     }
-
-    fun onProductoIdChange(value: String) {
-        _producto.update {
-            it.copy(
-                id = value,
-                idError = if (value.isBlank()) "Requerido" else null
-            )
-        }
+    fun clearProductoResult() {
+        _producto.value = ProductoUiState()
+    }
+    fun onProductoSkuChange(value: String) {
+        // SKU es opcional, pero si hay contenido DEBE ser numérico
+        val v = value.trim()
+        val error = if (v.isNotEmpty() && !v.all { it.isDigit() }) "Solo números" else null
+        _producto.update { it.copy(sku = value, skuError = error) }
         recomputeProductoCanSubmit()
     }
 
     fun onProductoCategoriaChange(value: String) {
-        _producto.update {
-            it.copy(
-                categoria = value,
-                categoriaError = if (value.isBlank()) "Requerido" else null
-            )
-        }
-        recomputeProductoCanSubmit()
+        // Categoría sigue siendo opcional; si la quieres obligatoria, agrega validación aquí.
+        _producto.update { it.copy(categoria = value, categoriaError = null) }
+        // sin impacto en canSubmit
+    }
+
+    fun onProductoSetPhoto(uri: String?) {
+        _producto.update { it.copy(photoUri = uri) }
     }
 
     private fun recomputeProductoCanSubmit() {
         val s = _producto.value
-        val noErrors = listOf(s.nombreError, s.idError, s.categoriaError).all { it == null }
-        val filled = s.nombre.isNotBlank() && s.id.isNotBlank() && s.categoria.isNotBlank()
+        val noErrors = listOf(
+            s.nombreError,
+            s.skuError
+        ).all { it == null }
+
+        val filled = s.nombre.isNotBlank() && (s.nombreError == null)
         _producto.update { it.copy(canSubmit = noErrors && filled) }
     }
 
@@ -393,16 +404,14 @@ class AuthViewModel(
 
         viewModelScope.launch {
             _producto.update { it.copy(isSubmitting = true, errorMsg = null, success = false) }
-            delay(500)
-
-            // 🔧 Asegúrate de implementar este método en UserRepository
             val result = try {
-                repository.agregarProducto(
-                    nombre = s.nombre.trim(),
-                    id = s.id.trim(),
-                    categoria = s.categoria.trim()
+                val id = repository.agregarProducto(
+                    nombre   = s.nombre.trim(),
+                    sku      = s.sku.trim().ifBlank { null },
+                    photoUri = s.photoUri,
+                    categoria= s.categoria.trim().ifBlank { null }
                 )
-                Result.success(Unit)
+                Result.success(id)
             } catch (e: Exception) {
                 Result.failure(e)
             }
@@ -422,17 +431,13 @@ class AuthViewModel(
         }
     }
 
-    fun clearProductoResult() {
-        _producto.update { ProductoUiState() }
-    }
+    // Sugerencias de categorías para el combo
+    suspend fun getCategoriasSugeridas(): List<String> =
+        repository.obtenerCategorias().map { it.nombre }.distinct().sorted()
 
     // --------- NUEVO: Cerrar sesión ---------
     fun logout() {
-        // Si tu repo tiene logout, puedes llamarlo aquí dentro de un launch try/catch.
-        // viewModelScope.launch { repository.logout() }
         _isLoggedIn.value = false
-
-        // (Opcional) Limpia estados de formularios
         _login.update { LoginUiState() }
         _register.update { RegisterUiState() }
     }

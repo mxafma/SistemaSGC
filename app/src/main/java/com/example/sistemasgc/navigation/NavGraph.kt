@@ -19,6 +19,8 @@ import com.example.sistemasgc.ui.screen.*
 import com.example.sistemasgc.ui.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 
 @Composable
 fun AppNavGraph(
@@ -198,27 +200,34 @@ fun AppNavGraph(
                 }
                 composable(Route.AgregarProducto.path) {
                     val productoState = authViewModel.producto.collectAsStateWithLifecycle().value
+
+                    // Cuando se guarda OK: volvemos y limpiamos estado
                     LaunchedEffect(productoState.success) {
                         if (productoState.success) {
                             navController.popBackStack()
                             authViewModel.clearProductoResult()
                         }
                     }
+
+
+                    var catOptions by remember { mutableStateOf<List<String>>(emptyList()) }
+                    LaunchedEffect(Unit) {
+                        catOptions = try { authViewModel.getCategoriasSugeridas() } catch (_: Exception) { emptyList() }
+                    }
+
                     AgregarProductoScreen(
-                        onAddProduct = { nombre, id, categoria ->
-                            // Pasamos los valores al VM y disparamos el guardado
+                        onAddProduct = { nombre, sku, categoria, photoUri ->
                             authViewModel.onProductoNombreChange(nombre)
-                            authViewModel.onProductoIdChange(id)
-                            authViewModel.onProductoCategoriaChange(categoria)
+                            authViewModel.onProductoSkuChange(sku ?: "")
+                            authViewModel.onProductoCategoriaChange(categoria ?: "")
+                            authViewModel.onProductoSetPhoto(photoUri)
                             authViewModel.submitProducto()
-                            // NO hacemos popBackStack aquí para no irnos antes de que termine el insert.
-                            // LaunchedEffect de arriba se encarga de volver cuando success = true.
                         },
-                        onEditCategory = {
-                            navController.navigate(Route.Categorias.path)
-                        }
+                        onEditCategory = { navController.navigate(Route.Categorias.path) },
+                        initialCategories = catOptions
                     )
                 }
+
 
                 composable(Route.DetallesCompras.path) {
                     DetallesComprasScreen(
