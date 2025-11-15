@@ -7,6 +7,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.core.view.WindowCompat
+import com.example.sistemasgc.ui.screen.PostScreen
+import com.example.sistemasgc.ui.theme.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
@@ -19,8 +22,14 @@ import com.example.sistemasgc.ui.viewmodel.ViewModelFactory
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         enableEdgeToEdge()
-        setContent { AppRoot() }
+        setContent { AppRoot()
+
+
+
+        }
     }
 }
 
