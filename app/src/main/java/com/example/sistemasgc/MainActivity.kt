@@ -1,5 +1,6 @@
 package com.example.sistemasgc
 
+import android.content.res.Resources
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -25,10 +26,9 @@ class MainActivity : ComponentActivity() {
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
         enableEdgeToEdge()
-        setContent { AppRoot()
 
-
-
+        setContent {
+            AppRoot()
         }
     }
 }

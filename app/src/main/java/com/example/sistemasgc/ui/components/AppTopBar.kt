@@ -32,6 +32,7 @@ fun AppTopBar(
     onProductos: (() -> Unit)? = null,
     onProveedores: (() -> Unit)? = null,
     onCompras: (() -> Unit)? = null,
+    onPosts: (() -> Unit)? = null,
 ) {
     var showMenu by remember { mutableStateOf(false) }
 

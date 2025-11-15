@@ -17,10 +17,12 @@ import com.example.sistemasgc.ui.components.AppTopBar
 import com.example.sistemasgc.ui.components.defaultDrawerItems
 import com.example.sistemasgc.ui.screen.*
 import com.example.sistemasgc.ui.viewmodel.AuthViewModel
+import com.example.sistemasgc.ui.viewmodel.PostViewModel
 import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun AppNavGraph(
@@ -48,6 +50,7 @@ fun AppNavGraph(
     val goCompras    = { go(Route.Compras.path) }
     val goDetallesCompras = { go(Route.DetallesCompras.path) }
     val goReportes = { go(Route.Reportes.path) }
+    val goPosts = { go(Route.Posts.path) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -71,6 +74,7 @@ fun AppNavGraph(
                         onProductos = { scope.launch { drawerState.close() }; goProductos() },
                         onProveedores = { scope.launch { drawerState.close() }; goProveedores() },
                         onCompras = { scope.launch { drawerState.close() }; goCompras() },
+                        onPosts = { scope.launch { drawerState.close() }; goPosts() },
                         onCategorias = { scope.launch { drawerState.close() }; goCategorias() }
                     )
                 )
@@ -88,7 +92,7 @@ fun AppNavGraph(
                     onProductos = if (isLoggedIn) goProductos else null,
                     onProveedores = if (isLoggedIn) goProveedores else null,
                     onCompras = if (isLoggedIn) goCompras else null,
-
+                    onPosts = { scope.launch { drawerState.close() }; goPosts() },
                     // ✅ NUEVO: desloguear y navegar a Home limpiando el back stack
                     onLogout = {
                         scope.launch {
@@ -228,6 +232,10 @@ fun AppNavGraph(
                     ReportesScreen(
                         onSearch = { query -> println("Buscando en reportes: $query") }
                     )
+                }
+                composable("posts") {
+                    val postViewModel: PostViewModel = viewModel()
+                    PostScreen(viewModel = postViewModel)
                 }
             }
         }

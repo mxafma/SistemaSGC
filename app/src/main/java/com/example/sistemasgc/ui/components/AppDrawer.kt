@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.filled.List
 import androidx.compose.ui.unit.dp
 // ✅ Estructura para cada ítem del Drawer
 data class DrawerItem(
@@ -64,7 +65,8 @@ fun defaultDrawerItems(
     onProveedores: (() -> Unit)? = null,
     onCompras: (() -> Unit)? = null,
     onCategorias: (() -> Unit)? = null,
-    onLogout: (() -> Unit)? = null
+    onLogout: (() -> Unit)? = null,
+    onPosts: (() -> Unit)? = null
 ): List<DrawerItem> {
     return listOf(
         DrawerItem("Inicio", Icons.Filled.Home, onHome),
@@ -74,6 +76,7 @@ fun defaultDrawerItems(
         DrawerItem("Proveedores", Icons.Filled.Store, onProveedores),
         DrawerItem("Compras", Icons.Filled.ShoppingBag, onCompras),
         DrawerItem("Categorías", Icons.Filled.Category, onCategorias),
+        DrawerItem("Posts API", Icons.Filled.List, onPosts),
         DrawerItem("Cerrar sesión", Icons.Filled.ExitToApp, onLogout)
     ).filter { it.onClick != null }
 }
