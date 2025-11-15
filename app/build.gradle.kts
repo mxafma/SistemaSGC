@@ -83,6 +83,17 @@ dependencies {
     // Coil (carga de imágenes en Compose)
     implementation("io.coil-kt:coil-compose:2.7.0")
 
+    // Jetpack Compose y Material 3 (version 2025)
+
+    implementation("androidx.activity:activity-compose:1.9.0")
+    implementation("androidx.compose.material3:material3:1.3.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+
+    // Retrofit y Gson converter
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+
+
     // -------------------- Tests base --------------------
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
