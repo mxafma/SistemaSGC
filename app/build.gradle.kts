@@ -40,6 +40,10 @@ android {
     buildFeatures {
         compose = true
     }
+
+    tasks.withType<Test>().configureEach {
+        useJUnitPlatform()
+    }
 }
 
 dependencies {
@@ -86,16 +90,30 @@ dependencies {
     // Jetpack Compose y Material 3 (version 2025)
 
     implementation("androidx.activity:activity-compose:1.9.0")
-    implementation("androidx.compose.material3:material3:1.3.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
 
     // Retrofit y Gson converter
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
 
+    //Kotest
+    testImplementation("io.kotest:kotest-runner-junit5:5.8.0")
+    testImplementation("io.kotest:kotest-assertions-core:5.8.0")
+
+    //Junit5
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
+
+    //MockK
+    testImplementation("io.mockk:mockk:1.13.10")
+
+    // Compose Ui Test
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4:1.6.2")
+    debugImplementation("androidx.compose.ui:ui-test-manifest:1.6.2")
 
     // -------------------- Tests base --------------------
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+
+
 }
