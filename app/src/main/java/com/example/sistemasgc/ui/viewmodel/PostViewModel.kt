@@ -17,7 +17,7 @@ open class PostViewModel : ViewModel() {
     protected  val _postList = MutableStateFlow<List<PostEntity>>(emptyList())
     //Flujo publico de solo lectura
 
-    val postList: StateFlow<List<PostEntity>> = _postList
+    open val postList: StateFlow<List<PostEntity>> = _postList
     // Se llama automaticamente al iniciar
     init {
         fetchPosts()
