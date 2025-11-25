@@ -147,11 +147,11 @@ class DataRepository(
             // Room generará automáticamente el id (Long)
             val id = proveedorDao.insert(
                 ProveedorEntity(
-                    Pname = response.name,
-                    Prut = response.rut,
-                    Pphone = response.phone,
-                    Pemail = response.email,
-                    Pdireccion = response.direccion
+                    name = response.name,
+                    rut = response.rut,
+                    phone = response.phone,
+                    email = response.email,
+                    direccion = response.direccion
                 )
             )
 
@@ -184,11 +184,11 @@ class DataRepository(
             remoteProveedores.forEach { proveedor ->
                 proveedorDao.insert(
                     ProveedorEntity(
-                        Pname = proveedor.name,
-                        Prut = proveedor.rut,
-                        Pphone = proveedor.phone,
-                        Pemail = proveedor.email,
-                        Pdireccion = proveedor.direccion
+                        name = proveedor.name,
+                        rut = proveedor.rut,
+                        phone = proveedor.phone,
+                        email = proveedor.email,
+                        direccion = proveedor.direccion
                     )
                 )
             }

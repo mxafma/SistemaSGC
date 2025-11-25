@@ -14,8 +14,8 @@ interface ProveedorDao {
     suspend fun insert(Proveedor: ProveedorEntity): Long
 
     // Devuelve un usuario por email (o null si no existe).
-    @Query("SELECT * FROM proveedores  WHERE Pemail = :Pemail LIMIT 1")
-    suspend fun getByEmailP(Pemail: String): ProveedorEntity?
+    @Query("SELECT * FROM proveedores  WHERE email = :email LIMIT 1")
+    suspend fun getByEmailP(email: String): ProveedorEntity?
 
     // Cuenta total de usuarios (para saber si hay datos y/o para seeds).
     @Query("SELECT COUNT(*) FROM proveedores ")

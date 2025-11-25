@@ -30,7 +30,7 @@ import kotlinx.coroutines.launch
         ProductoEntity::class,
         CategoriaEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -78,18 +78,18 @@ abstract class AppDatabase : RoomDatabase() {
 
                                 val seedProveedores = listOf(
                                     ProveedorEntity(
-                                        Pname = "Proveedor A",
-                                        Prut = "12345678-9",
-                                        Pphone = "+56933333333",
-                                        Pemail = "proveedora@empresa.cl",
-                                        Pdireccion = "Calle 123"
+                                        name = "Proveedor A",
+                                        rut = "12345678-9",
+                                        phone = "+56933333333",
+                                        email = "proveedora@empresa.cl",
+                                        direccion = "Calle 123"
                                     ),
                                     ProveedorEntity(
-                                        Pname = "Proveedor B",
-                                        Prut = "98765432-1",
-                                        Pphone = "+56944444444",
-                                        Pemail = "proveedorb@empresa.cl",
-                                        Pdireccion = "Avenida 456"
+                                        name = "Proveedor B",
+                                        rut = "98765432-1",
+                                        phone = "+56944444444",
+                                        email = "proveedorb@empresa.cl",
+                                        direccion = "Avenida 456"
                                     )
                                 )
 

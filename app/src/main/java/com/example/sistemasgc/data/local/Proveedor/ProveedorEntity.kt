@@ -7,14 +7,12 @@ import androidx.room.PrimaryKey
 // tableName = "users" define el nombre exacto de la tabla.
 @Entity(tableName = "proveedores")
 data class ProveedorEntity(
-    @PrimaryKey(autoGenerate = true)    // Clave primaria autoincremental
+    @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
 
-    val Pname: String,
-    val Prut: String,
-    val Pemail: String,
-    val Pphone: String,
-    val Pdireccion: String? = null
-
-
+    val name: String,
+    val rut: String,
+    val email: String,
+    val phone: String,
+    val direccion: String? = null
 )

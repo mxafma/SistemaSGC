@@ -240,8 +240,8 @@ class AuthViewModel(
                 val proveedores = proveedoresEntities.map { entity ->
                     Proveedor(
                         id = entity.id.toString(),
-                        nombre = entity.Pname,
-                        rut = entity.Prut
+                        nombre = entity.name,
+                        rut = entity.rut
                     )
                 }
                 _compras.update { it.copy(proveedores = proveedores) }
