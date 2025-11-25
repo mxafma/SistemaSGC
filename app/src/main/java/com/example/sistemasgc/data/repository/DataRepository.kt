@@ -17,6 +17,8 @@ import com.example.sistemasgc.data.local.producto.ProductoEntity
 import com.example.sistemasgc.Remote.RetrofitInstance
 import com.example.sistemasgc.Remote.model.RegisterRequest
 import com.example.sistemasgc.Remote.model.LoginRequest
+import com.example.sistemasgc.Remote.model.ProveedorRequest
+
 
 class DataRepository(
     private val userDao: UserDao,
@@ -34,7 +36,7 @@ class DataRepository(
                 password = password
             )
             val response = RetrofitInstance.api.loginUser(request)
-            
+
             // Guardar/actualizar usuario en base de datos local
             val localUser = userDao.getByEmail(email)
             if (localUser == null) {
@@ -83,7 +85,7 @@ class DataRepository(
                 password = password
             )
             val response = RetrofitInstance.api.registerUser(request)
-            
+
             // Opcional: guardar también en la base de datos local
             // Usamos los datos originales enviados, no la respuesta
             val id = userDao.insert(
@@ -94,7 +96,7 @@ class DataRepository(
                     password = password
                 )
             )
-            
+
             Result.success(id)
         } catch (e: retrofit2.HttpException) {
             // Error HTTP del servidor (400, 500, etc.)
@@ -125,24 +127,78 @@ class DataRepository(
         Pemail: String,
         Pdireccion: String? = null
     ): Result<Long> {
-        val existeProveedor = proveedorDao.getByEmailP(Pemail) != null
-        if (existeProveedor) {
-            return Result.failure(IllegalStateException("El correo ya está registrado"))
-        }
-        val id = proveedorDao.insert(
-            ProveedorEntity(
-                Pname = Pname,
-                Prut = Prut,
-                Pphone = Pphone,
-                Pemail = Pemail,
-                Pdireccion = Pdireccion
+        return try {
+            val existeProveedor = proveedorDao.getByEmailP(Pemail) != null
+            if (existeProveedor) {
+                return Result.failure(IllegalStateException("El correo ya está registrado"))
+            }
+
+            // Llamar al endpoint remoto del backend
+            val request = ProveedorRequest(
+                name = Pname,
+                rut = Prut,
+                phone = Pphone,
+                email = Pemail,
+                direccion = Pdireccion
             )
-        )
-        return Result.success(id)
+            val response = RetrofitInstance.api.createProveedor(request)
+
+            // ✅ GUARDAR EN LOCAL SIN EL ID (igual que register)
+            // Room generará automáticamente el id (Long)
+            val id = proveedorDao.insert(
+                ProveedorEntity(
+                    Pname = response.name,
+                    Prut = response.rut,
+                    Pphone = response.phone,
+                    Pemail = response.email,
+                    Pdireccion = response.direccion
+                )
+            )
+
+            Result.success(id)  // ← Retornar el Long de Room
+        } catch (e: retrofit2.HttpException) {
+            val errorBody = e.response()?.errorBody()?.string()
+            val errorMsg = when {
+                e.code() == 400 && errorBody?.contains("email", ignoreCase = true) == true -> "El correo del proveedor ya está registrado"
+                e.code() == 400 && errorBody?.contains("existe", ignoreCase = true) == true -> "El proveedor ya existe"
+                e.code() == 400 -> "Datos inválidos del proveedor. Verifica la información ingresada"
+                e.code() == 409 -> "El proveedor ya existe"
+                e.code() == 500 -> "Error del servidor. Intenta más tarde"
+                else -> "Error al crear proveedor: ${e.message()}"
+            }
+            Result.failure(IllegalStateException(errorMsg))
+        } catch (e: java.net.UnknownHostException) {
+            Result.failure(IllegalStateException("No hay conexión a internet"))
+        } catch (e: Exception) {
+            Result.failure(IllegalStateException("Error al crear proveedor: ${e.message}"))
+        }
     }
 
     suspend fun obtenerTodosLosProveedores(): List<ProveedorEntity> {
-        return proveedorDao.getAllP()
+        return try {
+            val remoteProveedores = RetrofitInstance.api.getProveedores()
+
+            proveedorDao.deleteAllP() // Limpiar proveedores locales
+
+            // Insertar los proveedores del backend SIN el id
+            remoteProveedores.forEach { proveedor ->
+                proveedorDao.insert(
+                    ProveedorEntity(
+                        Pname = proveedor.name,
+                        Prut = proveedor.rut,
+                        Pphone = proveedor.phone,
+                        Pemail = proveedor.email,
+                        Pdireccion = proveedor.direccion
+                    )
+                )
+            }
+
+            // Retornar desde local (que ahora está sincronizado)
+            proveedorDao.getAllP()
+        } catch (e: Exception) {
+            // Si falla el backend, usar datos locales
+            proveedorDao.getAllP()
+        }
     }
 
     // -------------------- PRODUCTOS --------------------

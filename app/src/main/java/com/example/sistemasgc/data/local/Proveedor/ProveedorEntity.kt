@@ -8,7 +8,7 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "proveedores")
 data class ProveedorEntity(
     @PrimaryKey(autoGenerate = true)    // Clave primaria autoincremental
-    val Pid: Long = 0L,
+    val id: Long = 0L,
 
     val Pname: String,
     val Prut: String,

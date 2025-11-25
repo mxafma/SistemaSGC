@@ -239,7 +239,7 @@ class AuthViewModel(
                 val proveedoresEntities = repository.obtenerTodosLosProveedores()
                 val proveedores = proveedoresEntities.map { entity ->
                     Proveedor(
-                        id = entity.Pid.toString(),
+                        id = entity.id.toString(),
                         nombre = entity.Pname,
                         rut = entity.Prut
                     )

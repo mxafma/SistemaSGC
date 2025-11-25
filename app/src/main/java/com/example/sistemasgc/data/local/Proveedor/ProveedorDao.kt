@@ -22,6 +22,9 @@ interface ProveedorDao {
     suspend fun count(): Int
 
     // Lista completa (útil para debug/administración).
-    @Query("SELECT * FROM proveedores  ORDER BY Pid ASC")
+    @Query("SELECT * FROM proveedores  ORDER BY id ASC")
     suspend fun getAllP(): List<ProveedorEntity>
+
+    @Query("DELETE FROM proveedores")
+    suspend fun deleteAllP()
 }
