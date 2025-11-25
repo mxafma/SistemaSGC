@@ -16,6 +16,7 @@ import com.example.sistemasgc.data.local.producto.ProductoEntity
 // ✅ Retrofit para llamadas al API
 import com.example.sistemasgc.Remote.RetrofitInstance
 import com.example.sistemasgc.Remote.model.RegisterRequest
+import com.example.sistemasgc.Remote.model.LoginRequest
 
 class DataRepository(
     private val userDao: UserDao,
@@ -26,11 +27,44 @@ class DataRepository(
 
     // -------------------- USUARIOS --------------------
     suspend fun login(email: String, password: String): Result<UserEntity> {
-        val user = userDao.getByEmail(email)
-        return if (user != null && user.password == password) {
-            Result.success(user)
-        } else {
-            Result.failure(IllegalArgumentException("Credenciales inválidas"))
+        return try {
+            // Llamar al endpoint remoto del backend
+            val request = LoginRequest(
+                email = email,
+                password = password
+            )
+            val response = RetrofitInstance.api.loginUser(request)
+            
+            // Guardar/actualizar usuario en base de datos local
+            val localUser = userDao.getByEmail(email)
+            if (localUser == null) {
+                // Si no existe localmente, lo insertamos
+                val id = userDao.insert(
+                    UserEntity(
+                        name = response.name,
+                        email = response.email,
+                        phone = response.phone ?: "",
+                        password = password
+                    )
+                )
+                val newUser = userDao.getByEmail(email)!!
+                Result.success(newUser)
+            } else {
+                // Si ya existe, lo retornamos
+                Result.success(localUser)
+            }
+        } catch (e: retrofit2.HttpException) {
+            val errorMsg = when (e.code()) {
+                401 -> "Credenciales inválidas"
+                404 -> "Usuario no encontrado"
+                400 -> "Email o contraseña incorrectos"
+                else -> "Error al iniciar sesión: ${e.message()}"
+            }
+            Result.failure(IllegalArgumentException(errorMsg))
+        } catch (e: java.net.UnknownHostException) {
+            Result.failure(IllegalArgumentException("No hay conexión a internet"))
+        } catch (e: Exception) {
+            Result.failure(IllegalArgumentException("Error al iniciar sesión: ${e.message}"))
         }
     }
 
@@ -64,10 +98,14 @@ class DataRepository(
             Result.success(id)
         } catch (e: retrofit2.HttpException) {
             // Error HTTP del servidor (400, 500, etc.)
-            val errorMsg = when (e.code()) {
-                400 -> "Datos inválidos"
-                409 -> "El correo ya está registrado"
-                else -> "Error del servidor: ${e.message()}"
+            val errorBody = e.response()?.errorBody()?.string()
+            val errorMsg = when {
+                e.code() == 400 && errorBody?.contains("email", ignoreCase = true) == true -> "El correo ya está registrado"
+                e.code() == 400 && errorBody?.contains("existe", ignoreCase = true) == true -> "El correo ya está registrado"
+                e.code() == 400 -> "Datos inválidos. Verifica la información ingresada"
+                e.code() == 409 -> "El correo ya está registrado"
+                e.code() == 500 -> "Error del servidor. Intenta más tarde"
+                else -> "Error al registrar: ${e.message()}"
             }
             Result.failure(IllegalStateException(errorMsg))
         } catch (e: java.net.UnknownHostException) {
