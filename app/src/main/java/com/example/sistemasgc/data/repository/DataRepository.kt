@@ -51,11 +51,12 @@ class DataRepository(
             val response = RetrofitInstance.api.registerUser(request)
             
             // Opcional: guardar también en la base de datos local
+            // Usamos los datos originales enviados, no la respuesta
             val id = userDao.insert(
                 UserEntity(
-                    name = response.name,
-                    email = response.email,
-                    phone = response.phone,
+                    name = name,
+                    email = email,
+                    phone = phone,
                     password = password
                 )
             )

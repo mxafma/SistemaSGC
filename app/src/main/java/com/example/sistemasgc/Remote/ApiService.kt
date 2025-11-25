@@ -15,6 +15,6 @@ interface ApiService {
     suspend fun getPosts(): List<PostEntity>
 
     //Define una solicitud POST para registrar un usuario
-    @POST("/api/usuarios/register")
+    @POST("api/usuarios")
     suspend fun registerUser(@Body request: RegisterRequest): RegisterResponse
 }
