@@ -10,7 +10,7 @@ object RetrofitInstance {
     // Se instancia el servicio de la API una sola vez
     val api : ApiService by lazy {
         Retrofit.Builder()
-            .baseUrl("https://jsonplaceholder.typicode.com/")  // URL base de la API
+            .baseUrl("https://surprising-consideration-production-2946.up.railway.app/")  // URL base de la API
             .addConverterFactory(GsonConverterFactory.create()) // Conversor Json
             .build()
             .create(ApiService::class.java) // Implementa la interfaz ApiService

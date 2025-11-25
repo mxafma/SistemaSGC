@@ -13,6 +13,10 @@ import com.example.sistemasgc.data.local.Categoria.CategoriaEntity
 import com.example.sistemasgc.data.local.producto.ProductoDao
 import com.example.sistemasgc.data.local.producto.ProductoEntity
 
+// ✅ Retrofit para llamadas al API
+import com.example.sistemasgc.Remote.RetrofitInstance
+import com.example.sistemasgc.Remote.model.RegisterRequest
+
 class DataRepository(
     private val userDao: UserDao,
     private val proveedorDao: ProveedorDao,
@@ -36,19 +40,42 @@ class DataRepository(
         phone: String,
         password: String
     ): Result<Long> {
-        val exists = userDao.getByEmail(email) != null
-        if (exists) {
-            return Result.failure(IllegalStateException("El correo ya está registrado"))
-        }
-        val id = userDao.insert(
-            UserEntity(
+        return try {
+            // Llamar al endpoint remoto del backend
+            val request = RegisterRequest(
                 name = name,
                 email = email,
                 phone = phone,
                 password = password
             )
-        )
-        return Result.success(id)
+            val response = RetrofitInstance.api.registerUser(request)
+            
+            // Opcional: guardar también en la base de datos local
+            val id = userDao.insert(
+                UserEntity(
+                    name = response.name,
+                    email = response.email,
+                    phone = response.phone,
+                    password = password
+                )
+            )
+            
+            Result.success(id)
+        } catch (e: retrofit2.HttpException) {
+            // Error HTTP del servidor (400, 500, etc.)
+            val errorMsg = when (e.code()) {
+                400 -> "Datos inválidos"
+                409 -> "El correo ya está registrado"
+                else -> "Error del servidor: ${e.message()}"
+            }
+            Result.failure(IllegalStateException(errorMsg))
+        } catch (e: java.net.UnknownHostException) {
+            // Sin conexión a internet
+            Result.failure(IllegalStateException("No hay conexión a internet"))
+        } catch (e: Exception) {
+            // Otros errores
+            Result.failure(IllegalStateException("Error al registrar: ${e.message}"))
+        }
     }
 
     // -------------------- PROVEEDORES --------------------
