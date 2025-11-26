@@ -238,27 +238,26 @@ class DataRepository(
         sku: String?,
         photoUri: String?,
         categoria: String?
-    ): Long {
-        val cleanName = nombre.trim()
-        if (cleanName.length < 4) {
-            throw IllegalArgumentException("El nombre debe tener al menos 4 caracteres")
-        }
-
-
-        val cleanSku = sku?.trim()?.ifBlank { null }
-        if (cleanSku != null) {
-            if (!cleanSku.all { it.isDigit() }) {
-                throw IllegalArgumentException("El SKU debe contener solo números")
+    ): Result<Long> {
+        return try {
+            val cleanName = nombre.trim()
+            if (cleanName.length < 4) {
+                return Result.failure(IllegalArgumentException("El nombre debe tener al menos 4 caracteres"))
             }
-            val dupBySku = productoDao.getBySku(cleanSku)
-            if (dupBySku != null) {
-                throw IllegalStateException("Ya existe un producto con SKU \"$cleanSku\"")
+
+            val cleanSku = sku?.trim()?.ifBlank { null }
+            if (cleanSku != null) {
+                if (!cleanSku.all { it.isDigit() }) {
+                    return Result.failure(IllegalArgumentException("El SKU debe contener solo números"))
+                }
+                val dupBySku = productoDao.getBySku(cleanSku)
+                if (dupBySku != null) {
+                    return Result.failure(IllegalStateException("Ya existe un producto con SKU \"$cleanSku\""))
+                }
             }
-        }
 
-        val cleanCategoria = categoria?.trim()?.ifBlank { null }
+            val cleanCategoria = categoria?.trim()?.ifBlank { null }
 
-        try {
             val request = ProductoRequest(
                 nombre = cleanName,
                 sku = cleanSku,
@@ -275,7 +274,8 @@ class DataRepository(
                 categoria = response.categoria ?: cleanCategoria
             )
 
-            return productoDao.insert(entity)
+            val id = productoDao.insert(entity)
+            Result.success(id)
 
         } catch (e: retrofit2.HttpException) {
             val errorBody = e.response()?.errorBody()?.string()
@@ -304,12 +304,12 @@ class DataRepository(
                     "Error al crear producto: ${e.message()}"
             }
 
-            throw IllegalStateException(msg)
+            Result.failure(IllegalStateException(msg))
 
         } catch (e: java.net.UnknownHostException) {
-            throw IllegalStateException("No hay conexión a internet")
+            Result.failure(IllegalStateException("No hay conexión a internet"))
         } catch (e: Exception) {
-            throw IllegalStateException("Error al crear producto: ${e.message}")
+            Result.failure(IllegalStateException("Error al crear producto: ${e.message}"))
         }
     }
 

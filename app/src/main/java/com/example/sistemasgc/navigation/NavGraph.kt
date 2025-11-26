@@ -21,7 +21,6 @@ import com.example.sistemasgc.ui.viewmodel.PostViewModel
 import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
@@ -171,7 +170,7 @@ fun AppNavGraph(
                         }
                     }
                     CategoriaScreenVM(
-                        viewModel = authViewModel, // ✅ PASA el ViewModel aquí
+                        viewModel = authViewModel,
                         onCancel = { navController.popBackStack() },
                         onSuccess = {
                             // Navegar a productos después de guardar exitosamente
@@ -201,30 +200,34 @@ fun AppNavGraph(
                         viewModel = authViewModel
                     )
                 }
+
+                // ✅ CORREGIDO: Pantalla AgregarProducto con la nueva implementación
                 composable(Route.AgregarProducto.path) {
                     val productoState = authViewModel.producto.collectAsStateWithLifecycle().value
+
+                    // Manejar éxito - navegar atrás cuando se guarde exitosamente
                     LaunchedEffect(productoState.success) {
                         if (productoState.success) {
                             navController.popBackStack()
                             authViewModel.clearProductoResult()
                         }
                     }
-                    var catOptions by remember { mutableStateOf<List<String>>(emptyList()) }
+
+                    // Cargar categorías al entrar
                     LaunchedEffect(Unit) {
-                        catOptions = try { authViewModel.getCategoriasSugeridas() } catch (_: Exception) { emptyList() }
+                        authViewModel.loadNombresCategorias()
                     }
+
                     AgregarProductoScreen(
-                        onAddProduct = { nombre, sku, categoria, photoUri ->
-                            authViewModel.onProductoNombreChange(nombre)
-                            authViewModel.onProductoSkuChange(sku ?: "")
-                            authViewModel.onProductoCategoriaChange(categoria ?: "")
-                            authViewModel.onProductoSetPhoto(photoUri)
-                            authViewModel.submitProducto()
+                        viewModel = authViewModel, // ✅ Pasa el ViewModel directamente
+                        onEditCategory = {
+                            // Navegar a categorías para crear una nueva
+                            navController.navigate(Route.Categorias.path)
                         },
-                        onEditCategory = { navController.navigate(Route.Categorias.path) },
-                        initialCategories = catOptions
+                        onBack = { navController.popBackStack() }
                     )
                 }
+
                 composable(Route.DetallesCompras.path) {
                     DetallesComprasScreen(onBack = { navController.popBackStack() })
                 }
@@ -241,3 +244,9 @@ fun AppNavGraph(
         }
     }
 }
+
+// Asegúrate de que Route.AgregarProducto esté definido en tu objeto Route
+// object Route {
+//     const val AgregarProducto = "agregar_producto"
+//     // ... otras rutas
+// }

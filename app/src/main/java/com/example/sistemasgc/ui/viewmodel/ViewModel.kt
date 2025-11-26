@@ -65,9 +65,6 @@ data class ProveedoresUiState(
     val errorMsg: String? = null
 )
 
-/**
- * Modelo para Agregar Producto
- */
 data class ProductoUiState(
     val nombre: String = "",
     val sku: String = "",
@@ -97,7 +94,6 @@ data class CategoriaUiState(
     val success: Boolean = false,
     val errorMsg: String? = null,
 
-    // Listas para mostrar categorías existentes
     val categorias: List<CategoriaEntity> = emptyList(),
     val nombresCategorias: List<String> = emptyList(),
     val isLoading: Boolean = false
@@ -120,14 +116,11 @@ data class ComprasUiState(
     val errorMsg: String? = null
 )
 
-// ELIMINA completamente la data class CompraState
-
 class AuthViewModel(
-    // Repositorio real (Room/SQLite o el que uses)
     private val repository: DataRepository
 ) : ViewModel() {
 
-    // --------- NUEVO: estado global de sesión ---------
+    // --------- Estado global de sesión ---------
     private val _isLoggedIn = MutableStateFlow(false)
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn
 
@@ -151,6 +144,25 @@ class AuthViewModel(
     // --------- Categorias ---------
     private val _categoria = MutableStateFlow(CategoriaUiState())
     val categoria: StateFlow<CategoriaUiState> = _categoria
+
+    // --------- Compras ---------
+    private val _compras = MutableStateFlow(ComprasUiState())
+    val compras: StateFlow<ComprasUiState> = _compras
+
+    private val formasPago = listOf(
+        "Efectivo",
+        "Transferencia",
+        "Tarjeta",
+        "Crédito (Pago Pendiente)"
+    )
+
+    init {
+        establecerFechaActualCompras()
+        cargarProveedoresParaCompras()
+        viewModelScope.launch {
+            loadNombresCategorias()
+        }
+    }
 
     // --------- LOGIN ---------
 
@@ -183,7 +195,6 @@ class AuthViewModel(
 
             _login.update {
                 if (result.isSuccess) {
-                    // ✅ Marca sesión iniciada
                     _isLoggedIn.value = true
                     it.copy(isSubmitting = false, success = true, errorMsg = null)
                 } else {
@@ -201,21 +212,7 @@ class AuthViewModel(
         _login.update { it.copy(success = false, errorMsg = null) }
     }
 
-    // --------- Compras ---------
-    private val _compras = MutableStateFlow(ComprasUiState())
-    val compras: StateFlow<ComprasUiState> = _compras
-
-    private val formasPago = listOf(
-        "Efectivo",
-        "Transferencia",
-        "Tarjeta",
-        "Crédito (Pago Pendiente)"
-    )
-
-    init {
-        establecerFechaActualCompras()
-        cargarProveedoresParaCompras()
-    }
+    // --------- COMPRAS ---------
 
     private fun establecerFechaActualCompras() {
         val fechaActual = obtenerFechaActualFormateada()
@@ -514,10 +511,6 @@ class AuthViewModel(
         recomputeProductoCanSubmit()
     }
 
-    fun clearProductoResult() {
-        _producto.value = ProductoUiState()
-    }
-
     fun onProductoSkuChange(value: String) {
         val v = value.trim()
         val error = if (v.isNotEmpty() && !v.all { it.isDigit() }) "Solo números" else null
@@ -544,68 +537,89 @@ class AuthViewModel(
         _producto.update { it.copy(canSubmit = noErrors && filled) }
     }
 
-    /**
-     * 🚀 Se usa desde AgregarProductoScreen.
-     * La pantalla ya validó; aquí solo copiamos los datos y disparamos submitProducto().
-     */
-    fun submitProductoDesdeFormulario(
-        nombre: String,
-        sku: String?,
-        categoria: String?,
-        photoUri: String?
-    ) {
-        val trimmedName = nombre.trim()
-        val rawSku = sku?.trim().orEmpty()
-
-        _producto.update {
-            it.copy(
-                nombre = trimmedName,
-                sku = rawSku,
-                categoria = categoria?.trim().orEmpty(),
-                photoUri = photoUri,
-                nombreError = null,
-                skuError = null,
-                canSubmit = true
-            )
-        }
-
-        submitProducto()
-    }
-
     fun submitProducto() {
         val s = _producto.value
+
+        // Validación local antes de enviar
+        val nombreError = when {
+            s.nombre.isBlank() -> "Requerido"
+            s.nombre.length < 4 -> "Debe tener al menos 4 caracteres"
+            else -> null
+        }
+
+        val skuError = if (s.sku.isNotEmpty() && !s.sku.all { it.isDigit() }) "Solo números" else null
+
+        // Si hay errores locales, no enviar
+        if (nombreError != null || skuError != null) {
+            _producto.update {
+                it.copy(
+                    nombreError = nombreError,
+                    skuError = skuError,
+                    canSubmit = false
+                )
+            }
+            return
+        }
+
         if (!s.canSubmit || s.isSubmitting) return
 
         viewModelScope.launch {
             _producto.update { it.copy(isSubmitting = true, errorMsg = null, success = false) }
-            val result = try {
-                val id = repository.agregarProducto(
-                    nombre   = s.nombre.trim(),
-                    sku      = s.sku.trim().ifBlank { null },
-                    photoUri = s.photoUri,
-                    categoria= s.categoria.trim().ifBlank { null }
-                )
-                Result.success(id)
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
 
-            _producto.update {
+            try {
+                val result = repository.agregarProducto(
+                    nombre = s.nombre.trim(),
+                    sku = s.sku.trim().ifBlank { null },
+                    photoUri = s.photoUri,
+                    categoria = s.categoria.trim().ifBlank { null }
+                )
+
                 if (result.isSuccess) {
-                    it.copy(isSubmitting = false, success = true, errorMsg = null)
+                    loadProductos()
+                    _producto.update {
+                        it.copy(
+                            isSubmitting = false,
+                            success = true,
+                            errorMsg = null,
+                            nombre = "",
+                            sku = "",
+                            categoria = "",
+                            photoUri = null
+                        )
+                    }
                 } else {
+                    // ✅ Propaga el error del backend correctamente
+                    val errorMessage = result.exceptionOrNull()?.message ?: "Error desconocido"
+                    _producto.update {
+                        it.copy(
+                            isSubmitting = false,
+                            success = false,
+                            errorMsg = errorMessage
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                // ✅ Captura cualquier excepción no manejada
+                _producto.update {
                     it.copy(
                         isSubmitting = false,
                         success = false,
-                        errorMsg = result.exceptionOrNull()?.message
-                            ?: "No se pudo guardar el producto"
+                        errorMsg = e.message ?: "Error de conexión"
                     )
                 }
             }
+        }
+    }
 
-            if (result.isSuccess) {
-                loadProductos()
-            }
+    fun clearProductoResult() {
+        _producto.update {
+            it.copy(
+                success = false,
+                errorMsg = null,
+                nombreError = null,
+                skuError = null,
+                categoriaError = null
+            )
         }
     }
 
@@ -672,11 +686,8 @@ class AuthViewModel(
 
             _categoria.update {
                 if (result.isSuccess) {
-                    // Recargar la lista de categorías después de agregar una nueva
                     loadCategorias()
                     loadNombresCategorias()
-
-                    // Limpiar el formulario
                     it.copy(
                         isSubmitting = false,
                         success = true,
@@ -770,14 +781,6 @@ class AuthViewModel(
                 categorias = it.categorias,
                 nombresCategorias = it.nombresCategorias
             )
-        }
-    }
-
-    // En el init del ViewModel, carga las categorías al iniciar
-    init {
-        viewModelScope.launch {
-            // Cargar nombres de categorías al iniciar para que estén disponibles
-            loadNombresCategorias()
         }
     }
 

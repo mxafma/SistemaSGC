@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
-import android.content.res.Configuration
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -32,36 +31,75 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.rememberAsyncImagePainter
 import java.io.File
+import com.example.sistemasgc.ui.viewmodel.AuthViewModel
 
-// ---------- ESTA ES LA PANTALLA CON EL BOTÓN GUARDAR ----------
 @Composable
 fun AgregarProductoScreen(
-    onAddProduct: (String, String?, String?, String?) -> Unit, // nombre, sku?, categoria?, photoUri?
+    viewModel: AuthViewModel,
     onEditCategory: () -> Unit,
-    initialCategories: List<String> = emptyList()
+    onBack: () -> Unit = {}
 ) {
-    // --------- Estado de formulario ---------
-    var nombre by rememberSaveable { mutableStateOf("") }
-    var sku by rememberSaveable { mutableStateOf("") }
-    var categoria by rememberSaveable { mutableStateOf("") }
-    var photoUri by rememberSaveable { mutableStateOf<String?>(null) }
+    // ✅ Observa el estado del ViewModel
+    val productoState by viewModel.producto.collectAsStateWithLifecycle()
+    val categoriaState by viewModel.categoria.collectAsStateWithLifecycle()
 
-    // Errores locales simples
-    var nombreError by remember { mutableStateOf<String?>(null) }
-    var skuError by remember { mutableStateOf<String?>(null) }
+    // Estado local sincronizado con ViewModel
+    var nombre by rememberSaveable { mutableStateOf(productoState.nombre) }
+    var sku by rememberSaveable { mutableStateOf(productoState.sku) }
+    var categoria by rememberSaveable { mutableStateOf(productoState.categoria) }
+    var photoUri by rememberSaveable { mutableStateOf(productoState.photoUri) }
 
     val ctx = LocalContext.current
+
+    // ✅ Sincroniza cambios con el ViewModel
+    LaunchedEffect(nombre) {
+        if (nombre != productoState.nombre) {
+            viewModel.onProductoNombreChange(nombre)
+        }
+    }
+
+    LaunchedEffect(sku) {
+        if (sku != productoState.sku) {
+            viewModel.onProductoSkuChange(sku)
+        }
+    }
+
+    LaunchedEffect(categoria) {
+        if (categoria != productoState.categoria) {
+            viewModel.onProductoCategoriaChange(categoria)
+        }
+    }
+
+    // ✅ Efecto para manejar éxito
+    LaunchedEffect(productoState.success) {
+        if (productoState.success) {
+            // Limpia el estado local cuando el ViewModel reporta éxito
+            nombre = ""
+            sku = ""
+            categoria = ""
+            photoUri = null
+            // Opcional: navegar atrás después de guardar
+            // onBack()
+        }
+    }
 
     // --------- Lanzadores Galería ---------
     val galleryPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri -> photoUri = uri?.toString() }
+    ) { uri ->
+        photoUri = uri?.toString()
+        viewModel.onProductoSetPhoto(photoUri)
+    }
 
     val legacyPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
-    ) { uri -> photoUri = uri?.toString() }
+    ) { uri ->
+        photoUri = uri?.toString()
+        viewModel.onProductoSetPhoto(photoUri)
+    }
 
     // --------- Cámara: permiso + take picture ---------
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
@@ -69,7 +107,10 @@ fun AgregarProductoScreen(
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
-        if (success) photoUri = pendingCameraUri?.toString()
+        if (success) {
+            photoUri = pendingCameraUri?.toString()
+            viewModel.onProductoSetPhoto(photoUri)
+        }
     }
 
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
@@ -101,8 +142,8 @@ fun AgregarProductoScreen(
     }
 
     // --------- Categorías (DropdownMenu) ---------
-    val catOptions = remember(initialCategories) {
-        initialCategories.map { it.trim() }.filter { it.isNotEmpty() }.distinct().sorted()
+    val catOptions = remember(categoriaState.nombresCategorias) {
+        categoriaState.nombresCategorias.map { it.trim() }.filter { it.isNotEmpty() }.distinct().sorted()
     }
     var catExpanded by remember { mutableStateOf(false) }
     val filteredCat = remember(categoria, catOptions) {
@@ -128,20 +169,23 @@ fun AgregarProductoScreen(
                     textAlign = TextAlign.Center
                 )
 
+                // ✅ Muestra error del backend si existe
+                if (productoState.errorMsg != null) {
+                    Text(
+                        text = productoState.errorMsg!!,
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
                 // ---- Nombre (obligatorio ≥ 4) ----
                 OutlinedTextField(
                     value = nombre,
-                    onValueChange = {
-                        nombre = it
-                        nombreError = when {
-                            it.isBlank()  -> "Requerido"
-                            it.length < 4 -> "Debe tener al menos 4 caracteres"
-                            else          -> null
-                        }
-                    },
+                    onValueChange = { nombre = it },
                     label = { Text("Nombre* (≥ 4)") },
-                    isError = nombreError != null,
-                    supportingText = { nombreError?.let { Text(it) } },
+                    isError = productoState.nombreError != null,
+                    supportingText = { productoState.nombreError?.let { Text(it) } },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -149,13 +193,10 @@ fun AgregarProductoScreen(
                 // ---- SKU (opcional, solo numérico) ----
                 OutlinedTextField(
                     value = sku,
-                    onValueChange = {
-                        sku = it
-                        skuError = if (it.isNotEmpty() && !it.all { ch -> ch.isDigit() }) "Solo números" else null
-                    },
+                    onValueChange = { sku = it },
                     label = { Text("SKU (opcional, solo números)") },
-                    isError = skuError != null,
-                    supportingText = { skuError?.let { Text(it) } },
+                    isError = productoState.skuError != null,
+                    supportingText = { productoState.skuError?.let { Text(it) } },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -245,21 +286,30 @@ fun AgregarProductoScreen(
                 }
 
                 // ---------- BOTÓN GUARDAR ----------
-                val canSubmit = nombreError == null && skuError == null && nombre.isNotBlank()
                 Button(
                     onClick = {
-                        val skuOrNull = sku.trim().ifBlank { null }
-                        val catOrNull = categoria.trim().ifBlank { null }
-                        onAddProduct(nombre.trim(), skuOrNull, catOrNull, photoUri)
+                        viewModel.submitProducto()
                     },
-                    enabled = canSubmit,
+                    enabled = productoState.canSubmit && !productoState.isSubmitting,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp),
                     shape = MaterialTheme.shapes.extraLarge
-                ) { Text("Guardar") }
+                ) {
+                    Text(if (productoState.isSubmitting) "Guardando..." else "Guardar")
+                }
             }
         }
     }
 }
 
+@Preview(showBackground = true)
+@Composable
+fun AgregarProductoScreenPreview() {
+    // Para el preview, necesitarías un ViewModel fake o usar viewModel() si está en un contexto adecuado
+    MaterialTheme {
+        Surface {
+            Text("Preview no disponible - necesita ViewModel")
+        }
+    }
+}
