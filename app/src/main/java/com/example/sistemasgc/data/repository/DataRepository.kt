@@ -160,11 +160,13 @@ class DataRepository(
         Pdireccion: String? = null
     ): Result<Long> {
         return try {
+            // Verifica si ya existe localmente
             val existeProveedor = proveedorDao.getByEmailP(Pemail) != null
             if (existeProveedor) {
                 return Result.failure(IllegalStateException("El correo ya está registrado"))
             }
 
+            // Prepara el paquete para el servidor
             val request = ProveedorRequest(
                 name = Pname,
                 rut = Prut,
@@ -172,8 +174,11 @@ class DataRepository(
                 email = Pemail,
                 direccion = Pdireccion
             )
+
+            // Envia al servidor via Retrofit
             val response = RetrofitInstance.api.createProveedor(request)
 
+            //Guarda en la base de datos local
             val id = proveedorDao.insert(
                 ProveedorEntity(
                     name = Pname,
@@ -184,7 +189,10 @@ class DataRepository(
                 )
             )
 
+            // Devolver el resultado exitoso
             Result.success(id)
+
+            //Si algo falla devuelve un error
         } catch (e: retrofit2.HttpException) {
             val errorBody = e.response()?.errorBody()?.string()
             val backendMessage = parseBackendErrorMessage(errorBody)
