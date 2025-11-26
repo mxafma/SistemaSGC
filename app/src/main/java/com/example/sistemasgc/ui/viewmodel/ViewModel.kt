@@ -65,12 +65,7 @@ data class ProveedoresUiState(
 )
 
 /**
- * 🔄 NUEVO MODELO para Agregar Producto
- * - id: lo genera Room; no se ingresa. Tras guardar, lo exponemos en savedId.
- * - sku: opcional
- * - photoUri: opcional
- * - nombre: obligatorio (≥ 6)
- * - categoria: opcional (si quieres exigirla, marca el comentario en validación)
+ * Modelo para Agregar Producto
  */
 data class ProductoUiState(
     val nombre: String = "",
@@ -79,14 +74,14 @@ data class ProductoUiState(
     val photoUri: String? = null,
 
     val nombreError: String? = null,
-    val skuError: String? = null,        // por ahora no validamos formato; reservado si quieres agregar
-    val categoriaError: String? = null,  // si decides hacerla obligatoria
+    val skuError: String? = null,
+    val categoriaError: String? = null,
 
     val isSubmitting: Boolean = false,
     val canSubmit: Boolean = false,
     val success: Boolean = false,
     val errorMsg: String? = null,
-    val savedId: Long? = null            // 👈 ID autogenerado por Room después de guardar
+    val savedId: Long? = null
 )
 
 data class CategoriaUiState(
@@ -107,8 +102,6 @@ data class Proveedor(
     val nombre: String,
     val rut: String
 )
-
-
 
 data class ComprasUiState(
     val proveedorSeleccionado: String = "",
@@ -142,7 +135,7 @@ class AuthViewModel(
     private val _proveedor = MutableStateFlow(ProveedoresUiState())
     val proveedor: StateFlow<ProveedoresUiState> = _proveedor
 
-    // --------- NUEVO: Producto ---------
+    // --------- Producto ---------
     private val _producto = MutableStateFlow(ProductoUiState())
     val producto: StateFlow<ProductoUiState> = _producto
 
@@ -202,11 +195,10 @@ class AuthViewModel(
         _login.update { it.copy(success = false, errorMsg = null) }
     }
 
-    // --------- NUEVO: Estado de Compras ---------
+    // --------- Compras ---------
     private val _compras = MutableStateFlow(ComprasUiState())
     val compras: StateFlow<ComprasUiState> = _compras
 
-    // Formas de pago predefinidas
     private val formasPago = listOf(
         "Efectivo",
         "Transferencia",
@@ -215,12 +207,9 @@ class AuthViewModel(
     )
 
     init {
-        // Inicializar compras con fecha actual y cargar proveedores
         establecerFechaActualCompras()
         cargarProveedoresParaCompras()
     }
-
-    // --------- FUNCIONES DE COMPRAS ---------
 
     private fun establecerFechaActualCompras() {
         val fechaActual = obtenerFechaActualFormateada()
@@ -246,7 +235,6 @@ class AuthViewModel(
                 }
                 _compras.update { it.copy(proveedores = proveedores) }
             } catch (e: Exception) {
-                // En caso de error, usar lista vacía o datos de ejemplo
                 val proveedoresEjemplo = listOf(
                     Proveedor("1", "Proveedor A", "12345678-9"),
                     Proveedor("2", "Proveedor B", "87654321-0")
@@ -268,7 +256,6 @@ class AuthViewModel(
         _compras.update { it.copy(fechaSeleccionada = fecha) }
     }
 
-
     fun getFormasPago(): List<String> = formasPago
 
     fun submitCompra(
@@ -285,15 +272,14 @@ class AuthViewModel(
         viewModelScope.launch {
             _compras.update { it.copy(isSubmitting = true, errorMsg = null) }
 
-            delay(500) // Simular procesamiento
+            delay(500)
 
             try {
-                // Lógica de guardado...
                 println("Compra agregada: ${state.proveedorSeleccionado}")
 
                 _compras.update {
                     it.copy(
-                        isSubmitting = false,  // ✅ IMPORTANTE: resetear isSubmitting
+                        isSubmitting = false,
                         success = true,
                         proveedorSeleccionado = "",
                         formaPagoSeleccionada = "",
@@ -306,7 +292,7 @@ class AuthViewModel(
             } catch (e: Exception) {
                 _compras.update {
                     it.copy(
-                        isSubmitting = false,  // ✅ IMPORTANTE: resetear incluso en error
+                        isSubmitting = false,
                         success = false,
                         errorMsg = "Error al guardar la compra: ${e.message}"
                     )
@@ -324,8 +310,6 @@ class AuthViewModel(
             )
         }
     }
-
-    // --------- PROVEEDOR ---------
 
     // --------- PROVEEDOR ---------
 
@@ -365,10 +349,10 @@ class AuthViewModel(
         _proveedor.update {
             it.copy(
                 direccion = value,
-                direccionError = validateDireccion(value) // ← ¡AGREGA ESTA LÍNEA!
+                direccionError = validateDireccion(value)
             )
         }
-        recomputeProveedorCanSubmit() // ← También actualiza el estado del botón
+        recomputeProveedorCanSubmit()
     }
 
     private fun recomputeProveedorCanSubmit() {
@@ -378,10 +362,8 @@ class AuthViewModel(
             s.rutError,
             s.phoneError,
             s.emailError
-            // s.direccionError se omite porque es opcional
         ).all { it == null }
 
-        // Dirección NO es requerida
         val filled = s.name.isNotBlank() && s.rut.isNotBlank() && s.phone.isNotBlank() && s.email.isNotBlank()
 
         _proveedor.update { it.copy(canSubmit = noErrors && filled) }
@@ -398,7 +380,6 @@ class AuthViewModel(
             _proveedor.update { it.copy(isSubmitting = true, errorMsg = null, success = false) }
             delay(700)
 
-            // ✅ Dirección opcional: solo se envía si no está vacía
             val direccionParaGuardar = s.direccion.trim().takeIf { it.isNotBlank() }
 
             val result = repository.proveedor(
@@ -406,7 +387,7 @@ class AuthViewModel(
                 Prut = s.rut.trim(),
                 Pphone = s.phone.trim(),
                 Pemail = s.email.trim(),
-                Pdireccion = direccionParaGuardar // ← Opcional
+                Pdireccion = direccionParaGuardar
             )
 
             _proveedor.update {
@@ -427,8 +408,6 @@ class AuthViewModel(
     fun clearProveedorResult() {
         _proveedor.update { it.copy(success = false, errorMsg = null) }
     }
-
-
 
     // --------- REGISTER ---------
 
@@ -534,7 +513,6 @@ class AuthViewModel(
     }
 
     fun onProductoSkuChange(value: String) {
-        // SKU es opcional, pero si hay contenido DEBE ser numérico
         val v = value.trim()
         val error = if (v.isNotEmpty() && !v.all { it.isDigit() }) "Solo números" else null
         _producto.update { it.copy(sku = value, skuError = error) }
@@ -542,9 +520,7 @@ class AuthViewModel(
     }
 
     fun onProductoCategoriaChange(value: String) {
-        // Categoría sigue siendo opcional; si la quieres obligatoria, agrega validación aquí.
         _producto.update { it.copy(categoria = value, categoriaError = null) }
-        // sin impacto en canSubmit
     }
 
     fun onProductoSetPhoto(uri: String?) {
@@ -560,6 +536,34 @@ class AuthViewModel(
 
         val filled = s.nombre.isNotBlank() && (s.nombreError == null)
         _producto.update { it.copy(canSubmit = noErrors && filled) }
+    }
+
+    /**
+     * 🚀 Se usa desde AgregarProductoScreen.
+     * La pantalla ya validó; aquí solo copiamos los datos y disparamos submitProducto().
+     */
+    fun submitProductoDesdeFormulario(
+        nombre: String,
+        sku: String?,
+        categoria: String?,
+        photoUri: String?
+    ) {
+        val trimmedName = nombre.trim()
+        val rawSku = sku?.trim().orEmpty()
+
+        _producto.update {
+            it.copy(
+                nombre = trimmedName,
+                sku = rawSku,
+                categoria = categoria?.trim().orEmpty(),
+                photoUri = photoUri,
+                nombreError = null,
+                skuError = null,
+                canSubmit = true
+            )
+        }
+
+        submitProducto()
     }
 
     fun submitProducto() {
@@ -593,9 +597,8 @@ class AuthViewModel(
                 }
             }
 
-            // ✅ NUEVO: refrescar la lista de nombres tras un alta exitosa
             if (result.isSuccess) {
-                loadProductos() // ← vuelve a publicar _productosNombres
+                loadProductos()
             }
         }
     }
@@ -603,20 +606,20 @@ class AuthViewModel(
     // Sugerencias de categorías para el combo (solo nombres)
     suspend fun getCategoriasSugeridas(): List<String> {
         return try {
-            repository.obtenerCategoriasNombres()   // <- este método lo agregamos en el repo
+            repository.obtenerCategoriasNombres()
         } catch (_: Exception) {
             emptyList()
         }
     }
 
-    // --------- NUEVO: Cerrar sesión ---------
+    // --------- Cerrar sesión ---------
     fun logout() {
         _isLoggedIn.value = false
         _login.update { LoginUiState() }
         _register.update { RegisterUiState() }
     }
 
-    // --------- CATEGORÍA: onChange ---------
+    // --------- CATEGORÍA ---------
     fun onCategoriaNombreChange(value: String) {
         _categoria.update {
             it.copy(
@@ -638,8 +641,8 @@ class AuthViewModel(
 
     private fun recomputeCategoriaCanSubmit() {
         val s = _categoria.value
-        val noErrors = listOf(s.nombreError /*, s.descripcionError*/).all { it == null }
-        val filled = s.nombre.isNotBlank() // descripción opcional
+        val noErrors = listOf(s.nombreError).all { it == null }
+        val filled = s.nombre.isNotBlank()
         _categoria.update { it.copy(canSubmit = noErrors && filled) }
     }
 
@@ -675,9 +678,8 @@ class AuthViewModel(
         _categoria.update { CategoriaUiState() }
     }
 
-    // --------- NUEVO: Productos cargar lista ---------
+    // --------- Productos cargar lista ---------
     fun loadProductos() {
-        // Lée desde Room -> Repository y publica los nombres
         viewModelScope.launch {
             val nombres = try {
                 repository.obtenerTodosLosProductos().map { it.nombre }

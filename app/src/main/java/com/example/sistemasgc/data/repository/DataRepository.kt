@@ -240,10 +240,6 @@ class DataRepository(
             throw IllegalArgumentException("El nombre debe tener al menos 4 caracteres")
         }
 
-        val dupByNombre = productoDao.getByNombre(cleanName)
-        if (dupByNombre != null) {
-            throw IllegalStateException("Ya existe un producto con nombre \"$cleanName\"")
-        }
 
         val cleanSku = sku?.trim()?.ifBlank { null }
         if (cleanSku != null) {
