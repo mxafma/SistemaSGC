@@ -1,704 +1,265 @@
-package com.example.sistemasgc.ui.viewmodel
+package com.example.sistemasgc.ui.screen
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import com.example.sistemasgc.domain.validation.*
-import com.example.sistemasgc.data.repository.DataRepository
-import com.example.sistemasgc.data.local.Proveedor.ProveedorEntity
-import java.util.*
-import java.text.SimpleDateFormat
+import android.Manifest
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.content.res.Configuration
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import coil.compose.rememberAsyncImagePainter
+import java.io.File
 
-// ----------------- ESTADOS DE UI (observable con StateFlow) -----------------
+// ---------- ESTA ES LA PANTALLA CON EL BOTÓN GUARDAR ----------
+@Composable
+fun AgregarProductoScreen(
+    onAddProduct: (String, String?, String?, String?) -> Unit, // nombre, sku?, categoria?, photoUri?
+    onEditCategory: () -> Unit,
+    initialCategories: List<String> = emptyList()
+) {
+    // --------- Estado de formulario ---------
+    var nombre by rememberSaveable { mutableStateOf("") }
+    var sku by rememberSaveable { mutableStateOf("") }
+    var categoria by rememberSaveable { mutableStateOf("") }
+    var photoUri by rememberSaveable { mutableStateOf<String?>(null) }
 
-data class LoginUiState(
-    val email: String = "",
-    val pass: String = "",
-    val emailError: String? = null,
-    val passError: String? = null,
-    val isSubmitting: Boolean = false,
-    val canSubmit: Boolean = false,
-    val success: Boolean = false,
-    val errorMsg: String? = null
-)
+    // Errores locales simples
+    var nombreError by remember { mutableStateOf<String?>(null) }
+    var skuError by remember { mutableStateOf<String?>(null) }
 
-data class RegisterUiState(
-    val name: String = "",
-    val email: String = "",
-    val phone: String = "",
-    val pass: String = "",
-    val confirm: String = "",
+    val ctx = LocalContext.current
 
-    val nameError: String? = null,
-    val emailError: String? = null,
-    val phoneError: String? = null,
-    val passError: String? = null,
-    val confirmError: String? = null,
+    // --------- Lanzadores Galería ---------
+    val galleryPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri -> photoUri = uri?.toString() }
 
-    val isSubmitting: Boolean = false,
-    val canSubmit: Boolean = false,
-    val success: Boolean = false,
-    val errorMsg: String? = null
-)
+    val legacyPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri -> photoUri = uri?.toString() }
 
-data class ProveedoresUiState(
-    val name: String = "",
-    val rut: String = "",
-    val phone: String = "",
-    val email: String = "",
-    val direccion: String = "",
+    // --------- Cámara: permiso + take picture ---------
+    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
 
-    val nameError: String? = null,
-    val rutError: String? = null,
-    val phoneError: String? = null,
-    val emailError: String? = null,
-    val direccionError: String? = null,
-
-    val isSubmitting: Boolean = false,
-    val canSubmit: Boolean = false,
-    val success: Boolean = false,
-    val errorMsg: String? = null
-)
-
-/**
- * Modelo para Agregar Producto
- */
-data class ProductoUiState(
-    val nombre: String = "",
-    val sku: String = "",
-    val categoria: String = "",
-    val photoUri: String? = null,
-
-    val nombreError: String? = null,
-    val skuError: String? = null,
-    val categoriaError: String? = null,
-
-    val isSubmitting: Boolean = false,
-    val canSubmit: Boolean = false,
-    val success: Boolean = false,
-    val errorMsg: String? = null,
-    val savedId: Long? = null
-)
-
-data class CategoriaUiState(
-    val nombre: String = "",
-    val descripcion: String = "",
-
-    val nombreError: String? = null,
-    val descripcionError: String? = null,
-
-    val isSubmitting: Boolean = false,
-    val canSubmit: Boolean = false,
-    val success: Boolean = false,
-    val errorMsg: String? = null
-)
-
-data class Proveedor(
-    val id: String,
-    val nombre: String,
-    val rut: String
-)
-
-data class ComprasUiState(
-    val proveedorSeleccionado: String = "",
-    val formaPagoSeleccionada: String = "",
-    val fechaSeleccionada: String = "",
-    val proveedores: List<Proveedor> = emptyList(),
-    val mostrarSelectorFecha: Boolean = false,
-    val isSubmitting: Boolean = false,
-    val success: Boolean = false,
-    val errorMsg: String? = null
-)
-
-class AuthViewModel(
-    private val repository: DataRepository
-) : ViewModel() {
-
-    // --------- NUEVO: estado global de sesión ---------
-    private val _isLoggedIn = MutableStateFlow(false)
-    val isLoggedIn: StateFlow<Boolean> = _isLoggedIn
-
-    // Flujos de estado de pantallas
-    private val _login = MutableStateFlow(LoginUiState())
-    val login: StateFlow<LoginUiState> = _login
-
-    private val _register = MutableStateFlow(RegisterUiState())
-    val register: StateFlow<RegisterUiState> = _register
-
-    private val _proveedor = MutableStateFlow(ProveedoresUiState())
-    val proveedor: StateFlow<ProveedoresUiState> = _proveedor
-
-    // --------- Producto ---------
-    private val _producto = MutableStateFlow(ProductoUiState())
-    val producto: StateFlow<ProductoUiState> = _producto
-
-    private val _productosNombres = MutableStateFlow<List<String>>(emptyList())
-    val productosNombres: StateFlow<List<String>> = _productosNombres
-
-    // --------- Categorias ---------
-    private val _categoria = MutableStateFlow(CategoriaUiState())
-    val categoria: StateFlow<CategoriaUiState> = _categoria
-
-    // --------- LOGIN ---------
-
-    fun onLoginEmailChange(value: String) {
-        _login.update { it.copy(email = value, emailError = validateEmail(value)) }
-        recomputeLoginCanSubmit()
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) photoUri = pendingCameraUri?.toString()
     }
 
-    fun onLoginPassChange(value: String) {
-        _login.update { it.copy(pass = value) }
-        recomputeLoginCanSubmit()
-    }
-
-    private fun recomputeLoginCanSubmit() {
-        val s = _login.value
-        val can = s.emailError == null &&
-                s.email.isNotBlank() &&
-                s.pass.isNotBlank()
-        _login.update { it.copy(canSubmit = can) }
-    }
-
-    fun submitLogin() {
-        val s = _login.value
-        if (!s.canSubmit || s.isSubmitting) return
-        viewModelScope.launch {
-            _login.update { it.copy(isSubmitting = true, errorMsg = null, success = false) }
-            delay(500)
-
-            val result = repository.login(s.email.trim(), s.pass)
-
-            _login.update {
-                if (result.isSuccess) {
-                    _isLoggedIn.value = true
-                    it.copy(isSubmitting = false, success = true, errorMsg = null)
-                } else {
-                    it.copy(
-                        isSubmitting = false,
-                        success = false,
-                        errorMsg = result.exceptionOrNull()?.message ?: "Error de autenticación"
-                    )
-                }
-            }
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            val imagesDir = File(ctx.cacheDir, "images").apply { mkdirs() }
+            val file = File.createTempFile("prod_", ".jpg", imagesDir)
+            val authority = "${ctx.packageName}.fileprovider"
+            pendingCameraUri = FileProvider.getUriForFile(ctx, authority, file)
+            pendingCameraUri?.let { cameraLauncher.launch(it) }
         }
     }
 
-    fun clearLoginResult() {
-        _login.update { it.copy(success = false, errorMsg = null) }
-    }
+    fun launchCameraWithPermission() {
+        val granted = ContextCompat.checkSelfPermission(
+            ctx, Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
 
-    // --------- Compras ---------
-    private val _compras = MutableStateFlow(ComprasUiState())
-    val compras: StateFlow<ComprasUiState> = _compras
-
-    private val formasPago = listOf(
-        "Efectivo",
-        "Transferencia",
-        "Tarjeta",
-        "Crédito (Pago Pendiente)"
-    )
-
-    init {
-        establecerFechaActualCompras()
-        cargarProveedoresParaCompras()
-    }
-
-    private fun establecerFechaActualCompras() {
-        val fechaActual = obtenerFechaActualFormateada()
-        _compras.update { it.copy(fechaSeleccionada = fechaActual) }
-    }
-
-    private fun obtenerFechaActualFormateada(): String {
-        val calendar = Calendar.getInstance()
-        val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-        return dateFormat.format(calendar.time)
-    }
-
-    private fun cargarProveedoresParaCompras() {
-        viewModelScope.launch {
-            try {
-                val proveedoresEntities = repository.obtenerTodosLosProveedores()
-                val proveedores = proveedoresEntities.map { entity ->
-                    Proveedor(
-                        id = entity.id.toString(),
-                        nombre = entity.name,
-                        rut = entity.rut
-                    )
-                }
-                _compras.update { it.copy(proveedores = proveedores) }
-            } catch (e: Exception) {
-                val proveedoresEjemplo = listOf(
-                    Proveedor("1", "Proveedor A", "12345678-9"),
-                    Proveedor("2", "Proveedor B", "87654321-0")
-                )
-                _compras.update { it.copy(proveedores = proveedoresEjemplo) }
-            }
-        }
-    }
-
-    fun onComprasProveedorChange(proveedor: String) {
-        _compras.update { it.copy(proveedorSeleccionado = proveedor) }
-    }
-
-    fun onComprasFormaPagoChange(formaPago: String) {
-        _compras.update { it.copy(formaPagoSeleccionada = formaPago) }
-    }
-
-    fun onComprasFechaChange(fecha: String) {
-        _compras.update { it.copy(fechaSeleccionada = fecha) }
-    }
-
-    fun getFormasPago(): List<String> = formasPago
-
-    fun submitCompra(
-        onSuccess: () -> Unit = {}
-    ) {
-        val state = _compras.value
-        if (state.proveedorSeleccionado.isBlank() || state.formaPagoSeleccionada.isBlank()) {
-            _compras.update {
-                it.copy(errorMsg = "Complete todos los campos requeridos")
-            }
-            return
-        }
-
-        viewModelScope.launch {
-            _compras.update { it.copy(isSubmitting = true, errorMsg = null) }
-
-            delay(500)
-
-            try {
-                println("Compra agregada: ${state.proveedorSeleccionado}")
-
-                _compras.update {
-                    it.copy(
-                        isSubmitting = false,
-                        success = true,
-                        proveedorSeleccionado = "",
-                        formaPagoSeleccionada = "",
-                        errorMsg = null
-                    )
-                }
-                establecerFechaActualCompras()
-                onSuccess()
-
-            } catch (e: Exception) {
-                _compras.update {
-                    it.copy(
-                        isSubmitting = false,
-                        success = false,
-                        errorMsg = "Error al guardar la compra: ${e.message}"
-                    )
-                }
-            }
-        }
-    }
-
-    fun clearComprasResult() {
-        _compras.update {
-            it.copy(
-                success = false,
-                errorMsg = null,
-                mostrarSelectorFecha = false
-            )
-        }
-    }
-
-    // --------- PROVEEDOR ---------
-
-    fun onProveedorNameChange(value: String) {
-        val filtered = value.filter { it.isLetter() || it.isWhitespace() }
-        _proveedor.update {
-            it.copy(
-                name = filtered,
-                nameError = validateNameLettersOnly(filtered)
-            )
-        }
-        recomputeProveedorCanSubmit()
-    }
-
-    fun onProveedorEmailChange(value: String) {
-        _proveedor.update { it.copy(email = value, emailError = validateEmail(value)) }
-        recomputeProveedorCanSubmit()
-    }
-
-    fun onProveedorPhoneChange(value: String) {
-        val digitsOnly = value.filter { it.isDigit() }
-        _proveedor.update {
-            it.copy(
-                phone = digitsOnly,
-                phoneError = validatePhoneDigitsOnly(digitsOnly)
-            )
-        }
-        recomputeProveedorCanSubmit()
-    }
-
-    fun onProveedorRutChange(value: String) {
-        _proveedor.update { it.copy(rut = value, rutError = validateRutChileno(value)) }
-        recomputeProveedorCanSubmit()
-    }
-
-    fun onProveedorDireccionChange(value: String) {
-        _proveedor.update {
-            it.copy(
-                direccion = value,
-                direccionError = validateDireccion(value)
-            )
-        }
-        recomputeProveedorCanSubmit()
-    }
-
-    private fun recomputeProveedorCanSubmit() {
-        val s = _proveedor.value
-        val noErrors = listOf(
-            s.nameError,
-            s.rutError,
-            s.phoneError,
-            s.emailError
-        ).all { it == null }
-
-        val filled = s.name.isNotBlank() && s.rut.isNotBlank() && s.phone.isNotBlank() && s.email.isNotBlank()
-
-        _proveedor.update { it.copy(canSubmit = noErrors && filled) }
-    }
-
-    suspend fun obtenerProveedores(): List<ProveedorEntity> {
-        return repository.obtenerTodosLosProveedores()
-    }
-
-    fun submitProveedor() {
-        val s = _proveedor.value
-        if (!s.canSubmit || s.isSubmitting) return
-        viewModelScope.launch {
-            _proveedor.update { it.copy(isSubmitting = true, errorMsg = null, success = false) }
-            delay(700)
-
-            val direccionParaGuardar = s.direccion.trim().takeIf { it.isNotBlank() }
-
-            val result = repository.proveedor(
-                Pname = s.name.trim(),
-                Prut = s.rut.trim(),
-                Pphone = s.phone.trim(),
-                Pemail = s.email.trim(),
-                Pdireccion = direccionParaGuardar
-            )
-
-            _proveedor.update {
-                if (result.isSuccess) {
-                    cargarProveedoresParaCompras()
-                    it.copy(isSubmitting = false, success = true, errorMsg = null)
-                } else {
-                    it.copy(
-                        isSubmitting = false,
-                        success = false,
-                        errorMsg = result.exceptionOrNull()?.message ?: "No se pudo registrar"
-                    )
-                }
-            }
-        }
-    }
-
-    fun clearProveedorResult() {
-        _proveedor.update { it.copy(success = false, errorMsg = null) }
-    }
-
-    // --------- REGISTER ---------
-
-    fun onNameChange(value: String) {
-        val filtered = value.filter { it.isLetter() || it.isWhitespace() }
-        _register.update { it.copy(name = filtered, nameError = validateNameLettersOnly(filtered)) }
-        recomputeRegisterCanSubmit()
-    }
-
-    fun onRegisterEmailChange(value: String) {
-        _register.update { it.copy(email = value, emailError = validateEmail(value)) }
-        recomputeRegisterCanSubmit()
-    }
-
-    fun onPhoneChange(value: String) {
-        val digitsOnly = value.filter { it.isDigit() }
-        _register.update {
-            it.copy(
-                phone = digitsOnly,
-                phoneError = validatePhoneDigitsOnly(digitsOnly)
-            )
-        }
-        recomputeRegisterCanSubmit()
-    }
-
-    fun onRegisterPassChange(value: String) {
-        _register.update { it.copy(pass = value, passError = validateStrongPassword(value)) }
-        _register.update { it.copy(confirmError = validateConfirm(it.pass, it.confirm)) }
-        recomputeRegisterCanSubmit()
-    }
-
-    fun onConfirmChange(value: String) {
-        _register.update {
-            it.copy(
-                confirm = value,
-                confirmError = validateConfirm(it.pass, value)
-            )
-        }
-        recomputeRegisterCanSubmit()
-    }
-
-    private fun recomputeRegisterCanSubmit() {
-        val s = _register.value
-        val noErrors = listOf(
-            s.nameError,
-            s.emailError,
-            s.phoneError,
-            s.passError,
-            s.confirmError
-        ).all { it == null }
-        val filled =
-            s.name.isNotBlank() && s.email.isNotBlank() && s.phone.isNotBlank() && s.pass.isNotBlank() && s.confirm.isNotBlank()
-        _register.update { it.copy(canSubmit = noErrors && filled) }
-    }
-
-    fun submitRegister() {
-        val s = _register.value
-        if (!s.canSubmit || s.isSubmitting) return
-        viewModelScope.launch {
-            _register.update { it.copy(isSubmitting = true, errorMsg = null, success = false) }
-            delay(700)
-
-            val result = repository.register(
-                name = s.name.trim(),
-                email = s.email.trim(),
-                phone = s.phone.trim(),
-                password = s.pass
-            )
-
-            _register.update {
-                if (result.isSuccess) {
-                    it.copy(isSubmitting = false, success = true, errorMsg = null)
-                } else {
-                    it.copy(
-                        isSubmitting = false,
-                        success = false,
-                        errorMsg = result.exceptionOrNull()?.message ?: "No se pudo registrar"
-                    )
-                }
-            }
-        }
-    }
-
-    fun clearRegisterResult() {
-        _register.update { it.copy(success = false, errorMsg = null) }
-    }
-
-    // --------- PRODUCTO ---------
-
-    fun onProductoNombreChange(value: String) {
-        val trimmed = value
-        val error = when {
-            trimmed.isBlank()   -> "Requerido"
-            trimmed.length < 4  -> "Debe tener al menos 4 caracteres"
-            else                -> null
-        }
-        _producto.update { it.copy(nombre = trimmed, nombreError = error) }
-        recomputeProductoCanSubmit()
-    }
-
-    fun clearProductoResult() {
-        _producto.value = ProductoUiState()
-    }
-
-    fun onProductoSkuChange(value: String) {
-        val v = value.trim()
-        val error = if (v.isNotEmpty() && !v.all { it.isDigit() }) "Solo números" else null
-        _producto.update { it.copy(sku = value, skuError = error) }
-        recomputeProductoCanSubmit()
-    }
-
-    fun onProductoCategoriaChange(value: String) {
-        _producto.update { it.copy(categoria = value, categoriaError = null) }
-    }
-
-    fun onProductoSetPhoto(uri: String?) {
-        _producto.update { it.copy(photoUri = uri) }
-    }
-
-    private fun recomputeProductoCanSubmit() {
-        val s = _producto.value
-        val noErrors = listOf(
-            s.nombreError,
-            s.skuError
-        ).all { it == null }
-
-        val filled = s.nombre.isNotBlank() && (s.nombreError == null)
-        _producto.update { it.copy(canSubmit = noErrors && filled) }
-    }
-
-    /**
-     * 🚀 Nueva función para usar desde AgregarProductoScreen (la que tiene onAddProduct)
-     * Recibe los datos del formulario, valida, actualiza estado y si todo OK llama a submitProducto()
-     */
-    fun submitProductoDesdeFormulario(
-        nombre: String,
-        sku: String?,
-        categoria: String?,
-        photoUri: String?
-    ) {
-        val trimmedName = nombre.trim()
-        val nombreError = when {
-            trimmedName.isBlank()   -> "Requerido"
-            trimmedName.length < 4  -> "Debe tener al menos 4 caracteres"
-            else                    -> null
-        }
-
-        val rawSku = sku?.trim().orEmpty()
-        val skuError = if (rawSku.isNotEmpty() && !rawSku.all { it.isDigit() }) "Solo números" else null
-
-        val canSubmit = nombreError == null && skuError == null && trimmedName.isNotBlank()
-
-        _producto.update {
-            it.copy(
-                nombre = trimmedName,
-                sku = rawSku,
-                categoria = categoria?.trim().orEmpty(),
-                photoUri = photoUri,
-                nombreError = nombreError,
-                skuError = skuError,
-                canSubmit = canSubmit
-            )
-        }
-
-        if (canSubmit) {
-            submitProducto()
+        if (granted) {
+            val imagesDir = File(ctx.cacheDir, "images").apply { mkdirs() }
+            val file = File.createTempFile("prod_", ".jpg", imagesDir)
+            val authority = "${ctx.packageName}.fileprovider"
+            pendingCameraUri = FileProvider.getUriForFile(ctx, authority, file)
+            pendingCameraUri?.let { cameraLauncher.launch(it) }
         } else {
-            _producto.update {
-                it.copy(
-                    errorMsg = nombreError ?: skuError
-                )
-            }
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
 
-    fun submitProducto() {
-        val s = _producto.value
-        if (!s.canSubmit || s.isSubmitting) return
+    // --------- Categorías (DropdownMenu) ---------
+    val catOptions = remember(initialCategories) {
+        initialCategories.map { it.trim() }.filter { it.isNotEmpty() }.distinct().sorted()
+    }
+    var catExpanded by remember { mutableStateOf(false) }
+    val filteredCat = remember(categoria, catOptions) {
+        if (categoria.isBlank()) catOptions
+        else catOptions.filter { it.contains(categoria, ignoreCase = true) }
+    }
 
-        viewModelScope.launch {
-            _producto.update { it.copy(isSubmitting = true, errorMsg = null, success = false) }
-            val result = try {
-                val id = repository.agregarProducto(
-                    nombre   = s.nombre.trim(),
-                    sku      = s.sku.trim().ifBlank { null },
-                    photoUri = s.photoUri,
-                    categoria= s.categoria.trim().ifBlank { null }
+    Surface(color = MaterialTheme.colorScheme.background) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(0.9f),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "Agregar producto",
+                    style = MaterialTheme.typography.headlineSmall,
+                    textAlign = TextAlign.Center
                 )
-                Result.success(id)
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
 
-            _producto.update {
-                if (result.isSuccess) {
-                    it.copy(isSubmitting = false, success = true, errorMsg = null)
-                } else {
-                    it.copy(
-                        isSubmitting = false,
-                        success = false,
-                        errorMsg = result.exceptionOrNull()?.message
-                            ?: "No se pudo guardar el producto"
+                // ---- Nombre (obligatorio ≥ 4) ----
+                OutlinedTextField(
+                    value = nombre,
+                    onValueChange = {
+                        nombre = it
+                        nombreError = when {
+                            it.isBlank()  -> "Requerido"
+                            it.length < 4 -> "Debe tener al menos 4 caracteres"
+                            else          -> null
+                        }
+                    },
+                    label = { Text("Nombre* (≥ 4)") },
+                    isError = nombreError != null,
+                    supportingText = { nombreError?.let { Text(it) } },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // ---- SKU (opcional, solo numérico) ----
+                OutlinedTextField(
+                    value = sku,
+                    onValueChange = {
+                        sku = it
+                        skuError = if (it.isNotEmpty() && !it.all { ch -> ch.isDigit() }) "Solo números" else null
+                    },
+                    label = { Text("SKU (opcional, solo números)") },
+                    isError = skuError != null,
+                    supportingText = { skuError?.let { Text(it) } },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // ---- Categoría (opcional): escribible + desplegable ----
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = categoria,
+                        onValueChange = { categoria = it },
+                        label = { Text("Categoría (opcional)") },
+                        trailingIcon = {
+                            IconButton(onClick = { catExpanded = !catExpanded }) {
+                                Icon(
+                                    imageVector = Icons.Filled.ArrowDropDown,
+                                    contentDescription = "Ver categorías"
+                                )
+                            }
+                        },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    DropdownMenu(
+                        expanded = catExpanded,
+                        onDismissRequest = { catExpanded = false }
+                    ) {
+                        val items = if (filteredCat.isEmpty()) listOf("(sin categorías)") else filteredCat
+                        items.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option) },
+                                onClick = {
+                                    if (option != "(sin categorías)") categoria = option
+                                    catExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // ---- Botón Crear categoría ----
+                Button(
+                    onClick = onEditCategory,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = MaterialTheme.shapes.extraLarge
+                ) { Text("Crear categoría") }
+
+                // ---- Foto: Galería / Cámara ----
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = {
+                            if (Build.VERSION.SDK_INT >= 33) {
+                                galleryPicker.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            } else {
+                                legacyPicker.launch("image/*")
+                            }
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        shape = MaterialTheme.shapes.extraLarge
+                    ) { Text(if (photoUri == null) "Galería" else "Cambiar foto") }
+
+                    Button(
+                        onClick = { launchCameraWithPermission() },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        shape = MaterialTheme.shapes.extraLarge
+                    ) { Text("Cámara") }
+                }
+
+                if (photoUri != null) {
+                    Image(
+                        painter = rememberAsyncImagePainter(model = photoUri),
+                        contentDescription = "Foto producto",
+                        modifier = Modifier.size(80.dp),
+                        contentScale = ContentScale.Crop
                     )
                 }
+
+                // ---------- BOTÓN GUARDAR ----------
+                val canSubmit = nombreError == null && skuError == null && nombre.isNotBlank()
+                Button(
+                    onClick = {
+                        val skuOrNull = sku.trim().ifBlank { null }
+                        val catOrNull = categoria.trim().ifBlank { null }
+                        onAddProduct(nombre.trim(), skuOrNull, catOrNull, photoUri)
+                    },
+                    enabled = canSubmit,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = MaterialTheme.shapes.extraLarge
+                ) { Text("Guardar") }
             }
-
-            if (result.isSuccess) {
-                loadProductos()
-            }
-        }
-    }
-
-    suspend fun getCategoriasSugeridas(): List<String> {
-        return try {
-            repository.obtenerCategoriasNombres()
-        } catch (_: Exception) {
-            emptyList()
-        }
-    }
-
-    // --------- NUEVO: Cerrar sesión ---------
-    fun logout() {
-        _isLoggedIn.value = false
-        _login.update { LoginUiState() }
-        _register.update { RegisterUiState() }
-    }
-
-    // --------- CATEGORÍA ---------
-    fun onCategoriaNombreChange(value: String) {
-        _categoria.update {
-            it.copy(
-                nombre = value,
-                nombreError = when {
-                    value.isBlank() -> "Requerido"
-                    value.trim().length < 3 -> "Debe tener al menos 3 caracteres"
-                    else -> null
-                }
-            )
-        }
-        recomputeCategoriaCanSubmit()
-    }
-
-    fun onCategoriaDescripcionChange(value: String) {
-        _categoria.update { it.copy(descripcion = value, descripcionError = null) }
-        recomputeCategoriaCanSubmit()
-    }
-
-    private fun recomputeCategoriaCanSubmit() {
-        val s = _categoria.value
-        val noErrors = listOf(s.nombreError).all { it == null }
-        val filled = s.nombre.isNotBlank()
-        _categoria.update { it.copy(canSubmit = noErrors && filled) }
-    }
-
-    fun submitCategoria() {
-        val s = _categoria.value
-        if (!s.canSubmit || s.isSubmitting) return
-
-        viewModelScope.launch {
-            _categoria.update { it.copy(isSubmitting = true, errorMsg = null, success = false) }
-
-            val result = try {
-                repository.agregarCategoria(
-                    nombre = s.nombre.trim(),
-                    descripcion = s.descripcion.trim()
-                )
-                Result.success(Unit)
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
-
-            _categoria.update {
-                if (result.isSuccess) it.copy(isSubmitting = false, success = true, errorMsg = null)
-                else it.copy(
-                    isSubmitting = false,
-                    success = false,
-                    errorMsg = result.exceptionOrNull()?.message ?: "No se pudo guardar la categoría"
-                )
-            }
-        }
-    }
-
-    fun clearCategoriaResult() {
-        _categoria.update { CategoriaUiState() }
-    }
-
-    // --------- Productos cargar lista ---------
-    fun loadProductos() {
-        viewModelScope.launch {
-            val nombres = try {
-                repository.obtenerTodosLosProductos().map { it.nombre }
-            } catch (e: Exception) {
-                emptyList()
-            }
-            _productosNombres.value = nombres.distinct().sorted()
         }
     }
 }
+
