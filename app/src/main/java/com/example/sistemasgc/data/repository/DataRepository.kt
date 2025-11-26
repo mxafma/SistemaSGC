@@ -588,6 +588,27 @@ class DataRepository(
         }
     }
 
+    suspend fun obtenerHistorialCompras(): List<com.example.sistemasgc.Remote.model.CompraResponse> {
+        return try {
+            RetrofitInstance.api.getCompras()
+        } catch (e: Exception) {
+            // Si falla, devolver compras locales como fallback (mapeo simple)
+            compraDao.getAll().map {
+                com.example.sistemasgc.Remote.model.CompraResponse(
+                    id = it.idAuto,
+                    proveedor = it.proveedor,
+                    formaPago = it.formaPago,
+                    fecha = it.fecha,
+                    total = it.total
+                )
+            }
+        }
+    }
+
+    suspend fun eliminarCompraRemota(id: Long) {
+        RetrofitInstance.api.deleteCompra(id)
+    }
+
     // Función auxiliar para eliminar todas las categorías locales (útil para testing)
     suspend fun limpiarCategoriasLocales() {
         categoriaDao.deleteAllC()

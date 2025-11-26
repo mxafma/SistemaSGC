@@ -13,6 +13,7 @@ import com.example.sistemasgc.data.repository.DataRepository
 import com.example.sistemasgc.data.local.Proveedor.ProveedorEntity
 import java.util.*
 import java.text.SimpleDateFormat
+import org.json.JSONObject
 
 // ----------------- ESTADOS DE UI (observable con StateFlow) -----------------
 
@@ -155,6 +156,9 @@ class AuthViewModel(
     // --------- Compras ---------
     private val _compras = MutableStateFlow(ComprasUiState())
     val compras: StateFlow<ComprasUiState> = _compras
+
+    private val _historial = MutableStateFlow<List<com.example.sistemasgc.Remote.model.CompraResponse>>(emptyList())
+    val historial: StateFlow<List<com.example.sistemasgc.Remote.model.CompraResponse>> = _historial
 
     private val formasPago = listOf(
         "Efectivo",
@@ -349,6 +353,46 @@ class AuthViewModel(
                 mostrarSelectorFecha = false
             )
         }
+    }
+
+    fun loadHistorialCompras() {
+        viewModelScope.launch {
+            try {
+                val list = repository.obtenerHistorialCompras()
+                _historial.value = list
+            } catch (e: Exception) {
+                _historial.value = emptyList()
+            }
+        }
+    }
+
+    private fun parseBackendErrorMessage(errorBody: String?): String? {
+        if (errorBody.isNullOrBlank()) return null
+        return try {
+            JSONObject(errorBody)
+                .optString("error")
+                .takeIf { it.isNotBlank() }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    fun eliminarCompra(id: Long, onSuccess: () -> Unit = {}, onError: (String) -> Unit = {}) {
+        viewModelScope.launch {
+            try {
+                repository.eliminarCompraRemota(id)
+                onSuccess()
+            } catch (e: retrofit2.HttpException) {
+                onError(parseBackendErrorMessage(e.response()?.errorBody()?.string()) ?: "Error al eliminar compra: ${e.message()}")
+            } catch (e: Exception) {
+                onError(e.message ?: "Error al eliminar compra")
+            }
+        }
+    }
+
+    // Chequeo rápido de role almacenado
+    fun isAdmin(): Boolean {
+        return com.example.sistemasgc.Remote.TokenStore.getRole()?.equals("ADMIN", ignoreCase = true) == true
     }
 
     // --------- PROVEEDOR ---------

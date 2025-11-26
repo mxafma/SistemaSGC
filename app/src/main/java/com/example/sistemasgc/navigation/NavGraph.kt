@@ -48,6 +48,7 @@ fun AppNavGraph(
     val goAgregarProveedores = { go(Route.AgregarProveedor.path) }
     val goCompras    = { go(Route.Compras.path) }
     val goDetallesCompras = { go(Route.DetallesCompras.path) }
+    val goHistorial = { go(Route.HistorialCompras.path) }
     val goReportes = { go(Route.Reportes.path) }
     val goPosts = { go(Route.Posts.path) }
 
@@ -196,10 +197,17 @@ fun AppNavGraph(
                         onNuevaCompra = { proveedor, formaPago, fecha ->
                             println("Nueva compra: $proveedor, $formaPago, $fecha")
                         },
-                        onSearch = { query -> println("Buscando: $query") },
+                        onHistorial = goHistorial,
                         viewModel = authViewModel
                     )
                 }
+
+                    composable(Route.HistorialCompras.path) {
+                        HistorialComprasScreen(
+                            viewModel = authViewModel,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
 
                 // ✅ CORREGIDO: Pantalla AgregarProducto con la nueva implementación
                 composable(Route.AgregarProducto.path) {

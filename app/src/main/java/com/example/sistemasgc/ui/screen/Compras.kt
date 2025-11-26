@@ -22,12 +22,11 @@ import java.text.SimpleDateFormat
 fun ComprasScreen(
     onDetallesCompras: () -> Unit,
     onNuevaCompra: (String, String, String) -> Unit,
-    onSearch: (String) -> Unit,
+    onHistorial: () -> Unit,
     viewModel: AuthViewModel
 ) {
     val comprasState by viewModel.compras.collectAsStateWithLifecycle()
     var mostrarDatePicker by remember { mutableStateOf(false) }
-    var query by remember { mutableStateOf("") }
 
     val formasPago = viewModel.getFormasPago()
 
@@ -56,22 +55,16 @@ fun ComprasScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Buscador
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    label = { Text("Buscar compras...") },
-                    singleLine = true,
-                    trailingIcon = {
-                        IconButton(
-                            onClick = { onSearch(query) },
-                            enabled = query.isNotBlank()
-                        ) {
-                            Icon(Icons.Filled.Search, contentDescription = "Buscar")
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                // Historial Compras (nuevo botón en lugar del buscador)
+                Button(
+                    onClick = onHistorial,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.extraLarge
+                ) {
+                    Icon(Icons.Filled.History, contentDescription = "Historial")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Historial Compras")
+                }
 
                 // ---- Proveedor (Dropdown) ----
                 DropdownMenuPersonalizado(
