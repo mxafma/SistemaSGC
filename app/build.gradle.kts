@@ -104,7 +104,7 @@ dependencies {
 
     //Junit5
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
-
+    androidTestImplementation("io.mockk:mockk-android:1.13.10")
     //MockK
     testImplementation("io.mockk:mockk:1.13.10")
 
