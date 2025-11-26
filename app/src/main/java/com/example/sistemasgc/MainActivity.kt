@@ -42,12 +42,16 @@ fun AppRoot() {
     val proveedorDao = db.proveedorDao()
     val productoDao = db.productoDao()
     val categoriaDao = db.categoriaDao()
+    val compraDao = db.compraDao()
+    val detalleCompraDao = db.detalleCompraDao()
 
     val userRepository = DataRepository(
         userDao = userDao,
         proveedorDao = proveedorDao,
         productoDao = productoDao,
-        categoriaDao = categoriaDao
+        categoriaDao = categoriaDao,
+        compraDao = compraDao,
+        detalleCompraDao = detalleCompraDao
     )
 
     val authViewModel: AuthViewModel = viewModel(

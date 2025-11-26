@@ -113,7 +113,14 @@ data class ComprasUiState(
     val mostrarSelectorFecha: Boolean = false,
     val isSubmitting: Boolean = false,
     val success: Boolean = false,
-    val errorMsg: String? = null
+    val errorMsg: String? = null,
+    val detalles: List<DetalleCompraItem> = emptyList()
+)
+
+data class DetalleCompraItem(
+    val producto: String,
+    val cantidad: Int,
+    val precioUnitario: Double
 )
 
 class AuthViewModel(
@@ -271,37 +278,67 @@ class AuthViewModel(
             }
             return
         }
-
         viewModelScope.launch {
             _compras.update { it.copy(isSubmitting = true, errorMsg = null) }
 
-            delay(500)
+            // Mapear detalles UI a entidades locales temporales para el repo
+            val detallesEntities = state.detalles.map { d ->
+                com.example.sistemasgc.data.local.Compra.DetalleCompraEntity(
+                    compraId = 0L,
+                    producto = d.producto,
+                    cantidad = d.cantidad,
+                    precioUnitario = d.precioUnitario,
+                    subtotal = d.cantidad * d.precioUnitario
+                )
+            }
 
-            try {
-                println("Compra agregada: ${state.proveedorSeleccionado}")
+            val result = try {
+                repository.guardarCompra(
+                    proveedor = state.proveedorSeleccionado,
+                    formaPago = state.formaPagoSeleccionada,
+                    fecha = state.fechaSeleccionada,
+                    detalles = detallesEntities
+                )
+            } catch (e: Exception) {
+                Result.failure<Long>(e)
+            }
 
+            if (result.isSuccess) {
                 _compras.update {
                     it.copy(
                         isSubmitting = false,
                         success = true,
                         proveedorSeleccionado = "",
                         formaPagoSeleccionada = "",
+                        detalles = emptyList(),
                         errorMsg = null
                     )
                 }
                 establecerFechaActualCompras()
                 onSuccess()
-
-            } catch (e: Exception) {
+            } else {
                 _compras.update {
                     it.copy(
                         isSubmitting = false,
                         success = false,
-                        errorMsg = "Error al guardar la compra: ${e.message}"
+                        errorMsg = result.exceptionOrNull()?.message ?: "Error al guardar la compra"
                     )
                 }
             }
         }
+    }
+
+    fun addDetalle(producto: String, cantidad: Int, precioUnitario: Double) {
+        val new = DetalleCompraItem(producto = producto, cantidad = cantidad, precioUnitario = precioUnitario)
+        _compras.update { it.copy(detalles = it.detalles + new) }
+    }
+
+    fun clearDetalles() {
+        _compras.update { it.copy(detalles = emptyList()) }
+    }
+
+    fun removeDetalleAt(index: Int) {
+        _compras.update { it.copy(detalles = it.detalles.filterIndexed { i, _ -> i != index }) }
     }
 
     fun clearComprasResult() {
@@ -787,12 +824,22 @@ class AuthViewModel(
     // --------- Productos cargar lista ---------
     fun loadProductos() {
         viewModelScope.launch {
-            val nombres = try {
-                repository.obtenerTodosLosProductos().map { it.nombre }
+            // Intentar sincronizar con backend primero si la lista local está vacía
+            try {
+                val local = repository.obtenerTodosLosProductos()
+                if (local.isEmpty()) {
+                    try {
+                        repository.sincronizarProductosDesdeBackend()
+                    } catch (_: Exception) {
+                        // ignore, fallback to local
+                    }
+                }
+
+                val nombres = repository.obtenerTodosLosProductos().map { it.nombre }
+                _productosNombres.value = nombres.distinct().sorted()
             } catch (e: Exception) {
-                emptyList()
+                _productosNombres.value = emptyList()
             }
-            _productosNombres.value = nombres.distinct().sorted()
         }
     }
 }

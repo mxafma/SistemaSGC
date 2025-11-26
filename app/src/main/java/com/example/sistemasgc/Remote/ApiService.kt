@@ -54,6 +54,14 @@ interface ApiService {
     @POST("/api/categorias")
     suspend fun createCategoria(@Body request: CategoriaRequest): CategoriaResponse
 
+    // ------------------- COMPRAS (Crear) ---------------------------
+    @POST("/api/compras")
+    suspend fun createCompra(@Body request: com.example.sistemasgc.Remote.model.CompraRequest): com.example.sistemasgc.Remote.model.CompraRequest
+
+    // ------------------- DETALLE COMPRAS (Crear) -------------------
+    @POST("/api/detalle-compras")
+    suspend fun createDetalleCompra(@Body request: com.example.sistemasgc.Remote.model.DetalleCompraRequest): com.example.sistemasgc.Remote.model.DetalleCompraRequest
+
 
     @GET("/api/categorias/nombres")
     suspend fun getNombresCategorias(): List<String>

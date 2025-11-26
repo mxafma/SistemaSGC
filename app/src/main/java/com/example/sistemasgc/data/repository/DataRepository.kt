@@ -22,12 +22,16 @@ import com.example.sistemasgc.Remote.model.CategoriaRequest
 import com.example.sistemasgc.Remote.model.CategoriaResponse
 
 import org.json.JSONObject
+import com.example.sistemasgc.data.local.Compra.CompraEntity
+import com.example.sistemasgc.data.local.Compra.DetalleCompraEntity
 
 class DataRepository(
     private val userDao: UserDao,
     private val proveedorDao: ProveedorDao,
     private val productoDao: ProductoDao,
-    private val categoriaDao: CategoriaDao
+    private val categoriaDao: CategoriaDao,
+    private val compraDao: com.example.sistemasgc.data.local.Compra.CompraDao,
+    private val detalleCompraDao: com.example.sistemasgc.data.local.Compra.DetalleCompraDao
 ) {
 
     // -------------------- Helper backend error --------------------
@@ -464,6 +468,116 @@ class DataRepository(
             categoriaDao.getAllC()
         } catch (e: Exception) {
             throw IllegalStateException("Error al sincronizar categorías: ${e.message}")
+        }
+    }
+
+    // -------------------- COMPRAS y DETALLES --------------------
+    suspend fun guardarCompra(
+        proveedor: String,
+        formaPago: String,
+        fecha: String,
+        detalles: List<DetalleCompraEntity>
+    ): Result<Long> {
+        return try {
+            // Calcular total
+            val total = detalles.sumOf { it.subtotal }
+
+            // Intentar guardar en backend
+            // Construir detalles para incluir en el body de la compra (backend espera "detalles")
+            val detallesReq = detalles.map { d ->
+                com.example.sistemasgc.Remote.model.DetalleCompraRequest(
+                    compraId = null,
+                    compra = null,
+                    producto = d.producto,
+                    cantidad = d.cantidad,
+                    precioUnitario = d.precioUnitario,
+                    subtotal = d.subtotal
+                )
+            }
+
+            // Convertir fecha a formato ISO (yyyy-MM-dd) si viene en dd/MM/yyyy
+            val fechaIso = try {
+                val input = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
+                val output = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                val d = input.parse(fecha)
+                if (d != null) output.format(d) else fecha
+            } catch (_: Exception) {
+                fecha
+            }
+
+            val compraReqConDetalles = com.example.sistemasgc.Remote.model.CompraRequest(
+                proveedor = proveedor,
+                formaPago = formaPago,
+                fecha = fechaIso,
+                total = detalles.sumOf { it.subtotal },
+                detalles = detallesReq
+            )
+
+            // Enviar la compra completa con sus detalles en un solo request
+            val respCompra = RetrofitInstance.api.createCompra(compraReqConDetalles)
+
+            // Si llega respuesta sin excepción, consideramos que el backend aceptó la compra
+            val localId = compraDao.insert(CompraEntity(
+                proveedor = proveedor,
+                formaPago = formaPago,
+                fecha = fecha,
+                total = total,
+                synced = true
+            ))
+
+            detalles.forEach { d ->
+                detalleCompraDao.insert(
+                    DetalleCompraEntity(
+                        compraId = localId,
+                        producto = d.producto,
+                        cantidad = d.cantidad,
+                        precioUnitario = d.precioUnitario,
+                        subtotal = d.subtotal,
+                        synced = true
+                    )
+                )
+            }
+
+            Result.success(localId)
+        } catch (e: retrofit2.HttpException) {
+            // Manejar error del backend y retornar mensaje legible
+            val errorBody = e.response()?.errorBody()?.string()
+            val backendMessage = parseBackendErrorMessage(errorBody)
+            val msg = backendMessage ?: "Error del servidor al guardar compra: ${e.message()}"
+            Result.failure(IllegalStateException(msg))
+        } catch (e: java.net.UnknownHostException) {
+            // Sin conexión: guardar localmente y marcar como no sincronizado
+            return try {
+                val total = detalles.sumOf { it.subtotal }
+                val id = compraDao.insert(
+                    CompraEntity(
+                        proveedor = proveedor,
+                        formaPago = formaPago,
+                        fecha = fecha,
+                        total = total,
+                        synced = false
+                    )
+                )
+
+                detalles.forEach { d ->
+                    detalleCompraDao.insert(
+                        DetalleCompraEntity(
+                            compraId = id,
+                            producto = d.producto,
+                            cantidad = d.cantidad,
+                            precioUnitario = d.precioUnitario,
+                            subtotal = d.subtotal,
+                            synced = false
+                        )
+                    )
+                }
+
+                Result.success(id)
+            } catch (ex: Exception) {
+                Result.failure(IllegalStateException("Error guardando localmente: ${ex.message}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(IllegalStateException("Error al guardar compra: ${e.message}"))
         }
     }
 

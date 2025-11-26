@@ -49,7 +49,8 @@ fun DetallesComprasScreen(
     var cantidad by rememberSaveable { mutableStateOf("") }
     var precioUnitario by rememberSaveable { mutableStateOf("") }
 
-    val productosSeleccionados = remember { mutableStateListOf<ProductoDetalle>() }
+    val comprasState by viewModel.compras.collectAsStateWithLifecycle()
+    val productosSeleccionados = comprasState.detalles
 
     Surface(color = MaterialTheme.colorScheme.background) {
         Column(
@@ -152,14 +153,8 @@ fun DetallesComprasScreen(
                     val precioDouble = precioUnitario.toDoubleOrNull() ?: 0.0
 
                     if (query.isNotBlank() && cantidadInt > 0 && precioDouble > 0.0) {
-                        productosSeleccionados.add(
-                            ProductoDetalle(
-                                id = productosSeleccionados.size + 1,
-                                nombre = query,
-                                cantidad = cantidadInt,
-                                precioUnitario = precioDouble
-                            )
-                        )
+                        // Agregar al ViewModel (se sincroniza en submitCompra)
+                        viewModel.addDetalle(query, cantidadInt, precioDouble)
                         // Limpiar campos
                         query = ""
                         cantidad = ""
@@ -210,7 +205,14 @@ fun DetallesComprasScreen(
                     .padding(vertical = 8.dp)
             ) {
                 items(productosSeleccionados) { producto ->
-                    ProductoDetalleItem(producto = producto)
+                    ProductoDetalleItem(
+                        producto = com.example.sistemasgc.ui.screen.ProductoDetalle(
+                            id = 0,
+                            nombre = producto.producto,
+                            cantidad = producto.cantidad,
+                            precioUnitario = producto.precioUnitario
+                        )
+                    )
                 }
             }
 

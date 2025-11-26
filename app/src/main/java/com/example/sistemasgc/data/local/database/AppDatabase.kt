@@ -28,9 +28,11 @@ import kotlinx.coroutines.launch
         UserEntity::class,
         ProveedorEntity::class,
         ProductoEntity::class,
-        CategoriaEntity::class
+        CategoriaEntity::class,
+        com.example.sistemasgc.data.local.Compra.CompraEntity::class,
+        com.example.sistemasgc.data.local.Compra.DetalleCompraEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -39,6 +41,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun proveedorDao(): ProveedorDao
     abstract fun productoDao(): ProductoDao
     abstract fun categoriaDao(): CategoriaDao
+    abstract fun compraDao(): com.example.sistemasgc.data.local.Compra.CompraDao
+    abstract fun detalleCompraDao(): com.example.sistemasgc.data.local.Compra.DetalleCompraDao
 
     companion object {
         @Volatile
