@@ -124,7 +124,7 @@ data class DetalleCompraItem(
     val precioUnitario: Double
 )
 
-class AuthViewModel(
+open class AuthViewModel(
     private val repository: DataRepository
 ) : ViewModel() {
 
@@ -150,8 +150,8 @@ class AuthViewModel(
     val productosNombres: StateFlow<List<String>> = _productosNombres
 
     // --------- Categorias ---------
-    private val _categoria = MutableStateFlow(CategoriaUiState())
-    val categoria: StateFlow<CategoriaUiState> = _categoria
+    open val _categoria = MutableStateFlow(CategoriaUiState())
+    open val categoria: StateFlow<CategoriaUiState> = _categoria
 
     // --------- Compras ---------
     private val _compras = MutableStateFlow(ComprasUiState())
@@ -747,7 +747,7 @@ class AuthViewModel(
         _categoria.update { it.copy(canSubmit = noErrors && filled) }
     }
 
-    fun submitCategoria() {
+    open fun submitCategoria() {
         val s = _categoria.value
         if (!s.canSubmit || s.isSubmitting) return
 
@@ -788,7 +788,7 @@ class AuthViewModel(
     }
 
     // Cargar todas las categorías con sus datos completos
-    fun loadCategorias() {
+    open fun loadCategorias() {
         viewModelScope.launch {
             _categoria.update { it.copy(isLoading = true) }
             try {
@@ -811,7 +811,7 @@ class AuthViewModel(
     }
 
     // Cargar solo los nombres de las categorías (para combobox, etc.)
-    fun loadNombresCategorias() {
+    open fun loadNombresCategorias() {
         viewModelScope.launch {
             try {
                 val nombres = repository.obtenerNombresCategorias()

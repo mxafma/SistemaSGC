@@ -26,7 +26,7 @@ import com.example.sistemasgc.data.local.Compra.CompraEntity
 import com.example.sistemasgc.data.local.Compra.DetalleCompraEntity
 import com.example.sistemasgc.Remote.TokenStore
 
-class DataRepository(
+open class DataRepository(
     private val userDao: UserDao,
     private val proveedorDao: ProveedorDao,
     private val productoDao: ProductoDao,
@@ -453,7 +453,7 @@ class DataRepository(
         }
     }
 
-    suspend fun obtenerNombresCategorias(): List<String> {
+    open suspend fun obtenerNombresCategorias(): List<String> {
         return try {
             // Intentar obtener del backend primero
             val remoteNombres = RetrofitInstance.api.getNombresCategorias()
