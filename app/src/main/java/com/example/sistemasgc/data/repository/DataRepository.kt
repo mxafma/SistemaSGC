@@ -24,6 +24,7 @@ import com.example.sistemasgc.Remote.model.CategoriaResponse
 import org.json.JSONObject
 import com.example.sistemasgc.data.local.Compra.CompraEntity
 import com.example.sistemasgc.data.local.Compra.DetalleCompraEntity
+import com.example.sistemasgc.Remote.TokenStore
 
 class DataRepository(
     private val userDao: UserDao,
@@ -55,17 +56,23 @@ class DataRepository(
             )
             val response = RetrofitInstance.api.loginUser(request)
 
-            val localUser = userDao.getByEmail(email)
+            // Guardar token, role y user si el backend lo retornó
+            TokenStore.setAuth(response.token, response.role, response.user)
+
+            val userFromResp = response.user
+            val userEmail = userFromResp?.email ?: email
+
+            val localUser = userDao.getByEmail(userEmail)
             if (localUser == null) {
                 val id = userDao.insert(
                     UserEntity(
-                        name = response.name,
-                        email = response.email,
-                        phone = response.phone ?: "",
+                        name = userFromResp?.name ?: "",
+                        email = userEmail,
+                        phone = userFromResp?.phone ?: "",
                         password = password
                     )
                 )
-                val newUser = userDao.getByEmail(email)!!
+                val newUser = userDao.getByEmail(userEmail)!!
                 Result.success(newUser)
             } else {
                 Result.success(localUser)

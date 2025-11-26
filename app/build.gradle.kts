@@ -95,6 +95,8 @@ dependencies {
     // Retrofit y Gson converter
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    // OkHttp logging interceptor (usado para depuración de requests/responses)
+    implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
 
     //Kotest
     testImplementation("io.kotest:kotest-runner-junit5:5.8.0")

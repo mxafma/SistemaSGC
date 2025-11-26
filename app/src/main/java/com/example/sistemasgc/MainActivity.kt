@@ -38,6 +38,9 @@ fun AppRoot() {
     val context = LocalContext.current.applicationContext
     val db = AppDatabase.getInstance(context)
 
+    // Inicializar TokenStore para gestión de JWT
+    com.example.sistemasgc.Remote.TokenStore.init(context)
+
     val userDao = db.userDao()
     val proveedorDao = db.proveedorDao()
     val productoDao = db.productoDao()
