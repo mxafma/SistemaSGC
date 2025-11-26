@@ -7,6 +7,8 @@ import com.example.sistemasgc.Remote.model.LoginRequest
 import com.example.sistemasgc.Remote.model.LoginResponse
 import com.example.sistemasgc.Remote.model.ProveedorRequest
 import com.example.sistemasgc.Remote.model.ProveedorResponse
+import com.example.sistemasgc.Remote.model.ProductoRequest
+import com.example.sistemasgc.Remote.model.ProductoResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -34,5 +36,11 @@ interface ApiService {
     @POST("api/proveedores")
     suspend fun createProveedor(@Body request: ProveedorRequest): ProveedorResponse
 
+    // -------------------PRODUCTOS (Crear y listar) ---------------------------
+    @POST("api/productos")
+    suspend fun createProducto(@Body request: ProductoRequest): ProductoResponse
+
+    @GET("api/productos")
+    suspend fun getProductos(): List<ProductoResponse>
 
 }

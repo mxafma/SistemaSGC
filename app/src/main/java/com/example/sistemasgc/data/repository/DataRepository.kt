@@ -9,15 +9,14 @@ import com.example.sistemasgc.data.local.Proveedor.ProveedorEntity
 import com.example.sistemasgc.data.local.Categoria.CategoriaDao
 import com.example.sistemasgc.data.local.Categoria.CategoriaEntity
 
-// ✅ Producto (paquete en minúsculas)
 import com.example.sistemasgc.data.local.producto.ProductoDao
 import com.example.sistemasgc.data.local.producto.ProductoEntity
 
-// ✅ Retrofit para llamadas al API
 import com.example.sistemasgc.Remote.RetrofitInstance
 import com.example.sistemasgc.Remote.model.RegisterRequest
 import com.example.sistemasgc.Remote.model.LoginRequest
 import com.example.sistemasgc.Remote.model.ProveedorRequest
+import com.example.sistemasgc.Remote.model.ProductoRequest
 import org.json.JSONObject
 
 class DataRepository(
@@ -42,17 +41,14 @@ class DataRepository(
     // -------------------- USUARIOS --------------------
     suspend fun login(email: String, password: String): Result<UserEntity> {
         return try {
-            // Llamar al endpoint remoto del backend
             val request = LoginRequest(
                 email = email,
                 password = password
             )
             val response = RetrofitInstance.api.loginUser(request)
 
-            // Guardar/actualizar usuario en base de datos local
             val localUser = userDao.getByEmail(email)
             if (localUser == null) {
-                // Si no existe localmente, lo insertamos
                 val id = userDao.insert(
                     UserEntity(
                         name = response.name,
@@ -64,7 +60,6 @@ class DataRepository(
                 val newUser = userDao.getByEmail(email)!!
                 Result.success(newUser)
             } else {
-                // Si ya existe, lo retornamos
                 Result.success(localUser)
             }
         } catch (e: retrofit2.HttpException) {
@@ -89,7 +84,6 @@ class DataRepository(
         password: String
     ): Result<Long> {
         return try {
-            // Llamar al endpoint remoto del backend
             val request = RegisterRequest(
                 name = name,
                 email = email,
@@ -98,7 +92,6 @@ class DataRepository(
             )
             val response = RetrofitInstance.api.registerUser(request)
 
-            // Guardar también en la base de datos local
             val id = userDao.insert(
                 UserEntity(
                     name = name,
@@ -143,84 +136,80 @@ class DataRepository(
         }
     }
 
-
     // -------------------- PROVEEDORES --------------------
-        suspend fun proveedor(
-            Pname: String,
-            Prut: String,
-            Pphone: String,
-            Pemail: String,
-            Pdireccion: String? = null
-        ): Result<Long> {
-            return try {
-                val existeProveedor = proveedorDao.getByEmailP(Pemail) != null
-                if (existeProveedor) {
-                    return Result.failure(IllegalStateException("El correo ya está registrado"))
-                }
+    suspend fun proveedor(
+        Pname: String,
+        Prut: String,
+        Pphone: String,
+        Pemail: String,
+        Pdireccion: String? = null
+    ): Result<Long> {
+        return try {
+            val existeProveedor = proveedorDao.getByEmailP(Pemail) != null
+            if (existeProveedor) {
+                return Result.failure(IllegalStateException("El correo ya está registrado"))
+            }
 
-                // 1. Llamar al backend
-                val request = ProveedorRequest(
+            val request = ProveedorRequest(
+                name = Pname,
+                rut = Prut,
+                phone = Pphone,
+                email = Pemail,
+                direccion = Pdireccion
+            )
+            val response = RetrofitInstance.api.createProveedor(request)
+
+            val id = proveedorDao.insert(
+                ProveedorEntity(
                     name = Pname,
                     rut = Prut,
                     phone = Pphone,
                     email = Pemail,
                     direccion = Pdireccion
                 )
-                val response = RetrofitInstance.api.createProveedor(request)
-                // Si quieres, podrías usar response.id más adelante si lo agregas al modelo.
+            )
 
-                // 2. Guardar en Room usando los valores que YA conocemos
-                val id = proveedorDao.insert(
-                    ProveedorEntity(
-                        name = Pname,         // 👈 usamos el parámetro, NO response.name
-                        rut = Prut,
-                        phone = Pphone,
-                        email = Pemail,
-                        direccion = Pdireccion
-                    )
-                )
+            Result.success(id)
+        } catch (e: retrofit2.HttpException) {
+            val errorBody = e.response()?.errorBody()?.string()
+            val backendMessage = parseBackendErrorMessage(errorBody)
 
-                Result.success(id)
-            } catch (e: retrofit2.HttpException) {
-                val errorBody = e.response()?.errorBody()?.string()
-                val backendMessage = parseBackendErrorMessage(errorBody)
+            val errorMsg = when {
+                backendMessage != null ->
+                    backendMessage
 
-                val errorMsg = when {
-                    backendMessage != null ->
-                        backendMessage
+                e.code() == 400 && errorBody?.contains("email", ignoreCase = true) == true ->
+                    "El correo del proveedor ya está registrado"
 
-                    e.code() == 400 && errorBody?.contains("email", ignoreCase = true) == true ->
-                        "El correo del proveedor ya está registrado"
+                e.code() == 400 && errorBody?.contains("existe", ignoreCase = true) == true ->
+                    "El proveedor ya existe"
 
-                    e.code() == 400 && errorBody?.contains("existe", ignoreCase = true) == true ->
-                        "El proveedor ya existe"
+                e.code() == 400 ->
+                    "Datos inválidos del proveedor. Verifica la información ingresada"
 
-                    e.code() == 400 ->
-                        "Datos inválidos del proveedor. Verifica la información ingresada"
+                e.code() == 409 ->
+                    "El proveedor ya existe"
 
-                    e.code() == 409 ->
-                        "El proveedor ya existe"
+                e.code() == 500 ->
+                    "Error del servidor. Intenta más tarde"
 
-                    e.code() == 500 ->
-                        "Error del servidor. Intenta más tarde"
-
-                    else ->
-                        "Error al crear proveedor: ${e.message()}"
-                }
-                Result.failure(IllegalStateException(errorMsg))
-            } catch (e: java.net.UnknownHostException) {
-                Result.failure(IllegalStateException("No hay conexión a internet"))
-            } catch (e: Exception) {
-                Result.failure(IllegalStateException("Error al crear proveedor: ${e.message}"))
+                else ->
+                    "Error al crear proveedor: ${e.message()}"
             }
+            Result.failure(IllegalStateException(errorMsg))
+        } catch (e: java.net.UnknownHostException) {
+            Result.failure(IllegalStateException("No hay conexión a internet"))
+        } catch (e: Exception) {
+            Result.failure(IllegalStateException("Error al crear proveedor: ${e.message}"))
         }
+    }
+
     suspend fun obtenerTodosLosProveedores(): List<ProveedorEntity> {
         return try {
             val remoteProveedores = RetrofitInstance.api.getProveedores()
 
-            proveedorDao.deleteAllP() // Limpiar proveedores locales
+            proveedorDao.deleteAllP()
 
-            // Insertar los proveedores del backend SIN el id
             remoteProveedores.forEach { proveedor ->
                 proveedorDao.insert(
                     ProveedorEntity(
@@ -233,10 +222,8 @@ class DataRepository(
                 )
             }
 
-            // Retornar desde local (que ahora está sincronizado)
             proveedorDao.getAllP()
         } catch (e: Exception) {
-            // Si falla el backend, usar datos locales
             proveedorDao.getAllP()
         }
     }
@@ -253,13 +240,11 @@ class DataRepository(
             throw IllegalArgumentException("El nombre debe tener al menos 4 caracteres")
         }
 
-        // Unicidad por nombre (ajusta si quieres permitir duplicados)
         val dupByNombre = productoDao.getByNombre(cleanName)
         if (dupByNombre != null) {
             throw IllegalStateException("Ya existe un producto con nombre \"$cleanName\"")
         }
 
-        // SKU opcional, pero si viene debe ser SOLO numérico y único
         val cleanSku = sku?.trim()?.ifBlank { null }
         if (cleanSku != null) {
             if (!cleanSku.all { it.isDigit() }) {
@@ -271,26 +256,96 @@ class DataRepository(
             }
         }
 
-        val entity = ProductoEntity(
-            nombre = cleanName,
-            sku = cleanSku,
-            photoUri = photoUri,
-            categoria = categoria?.trim()?.ifBlank { null }
-        )
+        val cleanCategoria = categoria?.trim()?.ifBlank { null }
 
-        return productoDao.insert(entity)
+        try {
+            val request = ProductoRequest(
+                nombre = cleanName,
+                sku = cleanSku,
+                categoria = cleanCategoria,
+                photoUri = photoUri
+            )
+
+            val response = RetrofitInstance.api.createProducto(request)
+
+            val entity = ProductoEntity(
+                nombre = response.nombre ?: cleanName,
+                sku = response.sku ?: cleanSku,
+                photoUri = response.photoUri ?: photoUri,
+                categoria = response.categoria ?: cleanCategoria
+            )
+
+            return productoDao.insert(entity)
+
+        } catch (e: retrofit2.HttpException) {
+            val errorBody = e.response()?.errorBody()?.string()
+            val backendMessage = parseBackendErrorMessage(errorBody)
+
+            val msg = when {
+                backendMessage != null ->
+                    backendMessage
+
+                e.code() == 400 && errorBody?.contains("sku", ignoreCase = true) == true ->
+                    "El SKU del producto ya está registrado"
+
+                e.code() == 400 && errorBody?.contains("nombre", ignoreCase = true) == true ->
+                    "El nombre del producto ya está registrado"
+
+                e.code() == 400 ->
+                    "Datos inválidos del producto. Verifica la información ingresada"
+
+                e.code() == 409 ->
+                    "El producto ya existe"
+
+                e.code() == 500 ->
+                    "Error del servidor. Intenta más tarde"
+
+                else ->
+                    "Error al crear producto: ${e.message()}"
+            }
+
+            throw IllegalStateException(msg)
+
+        } catch (e: java.net.UnknownHostException) {
+            throw IllegalStateException("No hay conexión a internet")
+        } catch (e: Exception) {
+            throw IllegalStateException("Error al crear producto: ${e.message}")
+        }
     }
 
-    suspend fun obtenerCategorias(): List<CategoriaEntity> =
-        categoriaDao.getAllC()
+    suspend fun sincronizarProductosDesdeBackend(): List<ProductoEntity> {
+        return try {
+            val remoteProductos = RetrofitInstance.api.getProductos()
 
-    suspend fun obtenerTodosLosProductos() =
+            productoDao.deleteAll()
+
+            remoteProductos.forEach { p ->
+                productoDao.insert(
+                    ProductoEntity(
+                        nombre = p.nombre ?: "",
+                        sku = p.sku,
+                        photoUri = p.photoUri,
+                        categoria = p.categoria
+                    )
+                )
+            }
+
+            productoDao.getAll()
+        } catch (e: Exception) {
+            productoDao.getAll()
+        }
+    }
+
+    suspend fun obtenerTodosLosProductos(): List<ProductoEntity> =
         productoDao.getAll()
 
     suspend fun buscarProductos(q: String) =
         productoDao.search(q.trim())
 
     // -------------------- CATEGORIAS --------------------
+    suspend fun obtenerCategorias(): List<CategoriaEntity> =
+        categoriaDao.getAllC()
+
     suspend fun agregarCategoria(nombre: String, descripcion: String) {
         if (nombre.trim().length < 3) {
             throw IllegalArgumentException("El nombre debe tener al menos 3 caracteres")
@@ -309,8 +364,5 @@ class DataRepository(
     }
 
     suspend fun obtenerCategoriasNombres(): List<String> =
-        categoriaDao.getAllC()
-            .map { it.nombre }
-            .distinct()
-            .sorted()
+        categoriaDao.getAllC().map { it.nombre }.distinct().sorted()
 }

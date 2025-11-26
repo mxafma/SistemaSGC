@@ -30,4 +30,6 @@ interface ProductoDao {
         ORDER BY nombre ASC
     """)
     suspend fun search(q: String): List<ProductoEntity>
+    @Query("DELETE FROM productos")
+    suspend fun deleteAll()
 }
