@@ -10,6 +10,9 @@ interface CategoriaDao {
     @Insert
     suspend fun insert(categoria: CategoriaEntity): Long
 
+    @Query("DELETE FROM categorias")
+    suspend fun deleteAllC()
+
     @Query("SELECT * FROM categorias WHERE nombre = :nombre LIMIT 1")
     suspend fun getByNombre(nombre: String): CategoriaEntity?
 

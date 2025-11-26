@@ -17,6 +17,10 @@ import com.example.sistemasgc.Remote.model.RegisterRequest
 import com.example.sistemasgc.Remote.model.LoginRequest
 import com.example.sistemasgc.Remote.model.ProveedorRequest
 import com.example.sistemasgc.Remote.model.ProductoRequest
+
+import com.example.sistemasgc.Remote.model.CategoriaRequest
+import com.example.sistemasgc.Remote.model.CategoriaResponse
+
 import org.json.JSONObject
 
 class DataRepository(
@@ -339,26 +343,132 @@ class DataRepository(
         productoDao.search(q.trim())
 
     // -------------------- CATEGORIAS --------------------
-    suspend fun obtenerCategorias(): List<CategoriaEntity> =
-        categoriaDao.getAllC()
 
-    suspend fun agregarCategoria(nombre: String, descripcion: String) {
-        if (nombre.trim().length < 3) {
-            throw IllegalArgumentException("El nombre debe tener al menos 3 caracteres")
-        }
+    suspend fun agregarCategoria(nombre: String, descripcion: String): Result<Long> {
+        return try {
+            val cleanNombre = nombre.trim()
+            val cleanDescripcion = descripcion.trim()
 
-        if (categoriaDao.getByNombre(nombre.trim()) != null) {
-            throw IllegalStateException("Ya existe una categoría con nombre \"${nombre.trim()}\"")
-        }
+            // Validación local
+            if (cleanNombre.length < 3) {
+                return Result.failure(IllegalArgumentException("El nombre debe tener al menos 3 caracteres"))
+            }
 
-        categoriaDao.insert(
-            CategoriaEntity(
-                nombre = nombre.trim(),
-                descripcion = descripcion.trim()
+            // Verificar duplicado localmente
+            val existeCategoriaLocal = categoriaDao.getByNombre(cleanNombre) != null
+            if (existeCategoriaLocal) {
+                return Result.failure(IllegalStateException("Ya existe una categoría con nombre \"$cleanNombre\""))
+            }
+
+            // Crear en el backend
+            val request = CategoriaRequest(
+                nombre = cleanNombre,
+                descripcion = cleanDescripcion
             )
-        )
+            val response = RetrofitInstance.api.createCategoria(request)
+
+            // Guardar localmente
+            val id = categoriaDao.insert(
+                CategoriaEntity(
+                    nombre = response.nombre ?: cleanNombre, // ✅ Usa el valor local si el backend retorna null
+                    descripcion = response.descripcion ?: cleanDescripcion
+                )
+            )
+
+            Result.success(id)
+        } catch (e: retrofit2.HttpException) {
+            val errorBody = e.response()?.errorBody()?.string()
+            val backendMessage = parseBackendErrorMessage(errorBody)
+
+            val errorMsg = when {
+                backendMessage != null ->
+                    backendMessage
+
+                e.code() == 400 && errorBody?.contains("nombre", ignoreCase = true) == true ->
+                    "El nombre de la categoría ya está registrado"
+
+                e.code() == 400 && errorBody?.contains("existe", ignoreCase = true) == true ->
+                    "La categoría ya existe"
+
+                e.code() == 400 ->
+                    "Datos inválidos de la categoría. Verifica la información ingresada"
+
+                e.code() == 409 ->
+                    "La categoría ya existe"
+
+                e.code() == 500 ->
+                    "Error del servidor. Intenta más tarde"
+
+                else ->
+                    "Error al crear categoría: ${e.message()}"
+            }
+            Result.failure(IllegalStateException(errorMsg))
+        } catch (e: java.net.UnknownHostException) {
+            Result.failure(IllegalStateException("No hay conexión a internet"))
+        } catch (e: Exception) {
+            Result.failure(IllegalStateException("Error al crear categoría: ${e.message}"))
+        }
     }
 
-    suspend fun obtenerCategoriasNombres(): List<String> =
-        categoriaDao.getAllC().map { it.nombre }.distinct().sorted()
+    suspend fun obtenerTodasLasCategorias(): List<CategoriaEntity> {
+        return try {
+            // Primero intentar obtener del backend
+            val remoteCategorias = RetrofitInstance.api.getCategorias()
+
+            // Sincronizar con la base local
+            categoriaDao.deleteAllC()
+
+            remoteCategorias.forEach { categoria ->
+                categoriaDao.insert(
+                    CategoriaEntity(
+                        nombre = categoria.nombre,
+                        descripcion = categoria.descripcion
+                    )
+                )
+            }
+
+            categoriaDao.getAllC()
+        } catch (e: Exception) {
+            // Si falla, devolver las categorías locales
+            categoriaDao.getAllC()
+        }
+    }
+
+    suspend fun obtenerNombresCategorias(): List<String> {
+        return try {
+            // Intentar obtener del backend primero
+            val remoteNombres = RetrofitInstance.api.getNombresCategorias()
+            remoteNombres
+        } catch (e: Exception) {
+            // Si falla, obtener de la base local
+            categoriaDao.getAllC().map { it.nombre }.distinct().sorted()
+        }
+    }
+
+    suspend fun sincronizarCategoriasDesdeBackend(): List<CategoriaEntity> {
+        return try {
+            val remoteCategorias = RetrofitInstance.api.getCategorias()
+
+            // Limpiar y actualizar la base local
+            categoriaDao.deleteAllC()
+
+            remoteCategorias.forEach { categoria ->
+                categoriaDao.insert(
+                    CategoriaEntity(
+                        nombre = categoria.nombre,
+                        descripcion = categoria.descripcion
+                    )
+                )
+            }
+
+            categoriaDao.getAllC()
+        } catch (e: Exception) {
+            throw IllegalStateException("Error al sincronizar categorías: ${e.message}")
+        }
+    }
+
+    // Función auxiliar para eliminar todas las categorías locales (útil para testing)
+    suspend fun limpiarCategoriasLocales() {
+        categoriaDao.deleteAllC()
+    }
 }

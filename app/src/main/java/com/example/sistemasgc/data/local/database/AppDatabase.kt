@@ -30,7 +30,7 @@ import kotlinx.coroutines.launch
         ProductoEntity::class,
         CategoriaEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -56,58 +56,16 @@ abstract class AppDatabase : RoomDatabase() {
                     .addCallback(object : RoomDatabase.Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)
-                            CoroutineScope(Dispatchers.IO).launch {
-                                val appDb = getInstance(context)
-                                val userDao = appDb.userDao()
-                                val proveedorDao = appDb.proveedorDao()
+                            // ❌ REMOVIMOS la inserción automática de usuarios
+                            // Los usuarios ahora se sincronizan con el backend
+                        }
 
-                                val seedUsers = listOf(
-                                    UserEntity(
-                                        name = "Admin",
-                                        email = "admin@duoc.cl",
-                                        phone = "+56911111111",
-                                        password = "Admin123!"
-                                    ),
-                                    UserEntity(
-                                        name = "Víctor Rosendo",
-                                        email = "victor@duoc.cl",
-                                        phone = "+56922222222",
-                                        password = "123456"
-                                    )
-                                )
-
-                                val seedProveedores = listOf(
-                                    ProveedorEntity(
-                                        name = "Proveedor A",
-                                        rut = "12345678-9",
-                                        phone = "+56933333333",
-                                        email = "proveedora@empresa.cl",
-                                        direccion = "Calle 123"
-                                    ),
-                                    ProveedorEntity(
-                                        name = "Proveedor B",
-                                        rut = "98765432-1",
-                                        phone = "+56944444444",
-                                        email = "proveedorb@empresa.cl",
-                                        direccion = "Avenida 456"
-                                    )
-                                )
-
-                                try {
-                                    // ⚠️ Estos métodos deben existir en tus DAOs
-                                    if (userDao.count() == 0) {
-                                        seedUsers.forEach { userDao.insert(it) }
-                                    }
-                                    if (proveedorDao.count() == 0) {
-                                        seedProveedores.forEach { proveedorDao.insert(it) }
-                                    }
-                                } catch (_: Exception) {
-                                    // Ignora seeds si los DAOs no tienen count() en este momento
-                                }
-                            }
+                        override fun onOpen(db: SupportSQLiteDatabase) {
+                            super.onOpen(db)
+                            // Opcional: Aquí podrías hacer una sincronización inicial
+                            // si necesitas datos locales por defecto
                         }
                     })
-                    // recrea la BD automáticamente si cambias versión/esquema
                     .fallbackToDestructiveMigration()
                     .build()
 

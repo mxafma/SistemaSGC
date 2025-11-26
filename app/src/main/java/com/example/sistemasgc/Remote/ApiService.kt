@@ -9,6 +9,8 @@ import com.example.sistemasgc.Remote.model.ProveedorRequest
 import com.example.sistemasgc.Remote.model.ProveedorResponse
 import com.example.sistemasgc.Remote.model.ProductoRequest
 import com.example.sistemasgc.Remote.model.ProductoResponse
+import com.example.sistemasgc.Remote.model.CategoriaRequest
+import com.example.sistemasgc.Remote.model.CategoriaResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -43,4 +45,18 @@ interface ApiService {
     @GET("api/productos")
     suspend fun getProductos(): List<ProductoResponse>
 
+    // --------------------------- Categorias (Crear, Listar y buscar poor nombre ) ---------------------------------------
+
+    @GET("/api/categorias")
+    suspend fun getCategorias(): List<CategoriaResponse>
+
+
+    @POST("/api/categorias")
+    suspend fun createCategoria(@Body request: CategoriaRequest): CategoriaResponse
+
+
+    @GET("/api/categorias/nombres")
+    suspend fun getNombresCategorias(): List<String>
 }
+
+

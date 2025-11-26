@@ -2,6 +2,7 @@ package com.example.sistemasgc.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.sistemasgc.data.local.Categoria.CategoriaEntity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -94,7 +95,12 @@ data class CategoriaUiState(
     val isSubmitting: Boolean = false,
     val canSubmit: Boolean = false,
     val success: Boolean = false,
-    val errorMsg: String? = null
+    val errorMsg: String? = null,
+
+    // Listas para mostrar categorías existentes
+    val categorias: List<CategoriaEntity> = emptyList(),
+    val nombresCategorias: List<String> = emptyList(),
+    val isLoading: Boolean = false
 )
 
 data class Proveedor(
@@ -606,7 +612,7 @@ class AuthViewModel(
     // Sugerencias de categorías para el combo (solo nombres)
     suspend fun getCategoriasSugeridas(): List<String> {
         return try {
-            repository.obtenerCategoriasNombres()
+            repository.obtenerNombresCategorias()
         } catch (_: Exception) {
             emptyList()
         }
@@ -651,31 +657,128 @@ class AuthViewModel(
         if (!s.canSubmit || s.isSubmitting) return
 
         viewModelScope.launch {
-            _categoria.update { it.copy(isSubmitting = true, errorMsg = null, success = false) }
-
-            val result = try {
-                repository.agregarCategoria(
-                    nombre = s.nombre.trim(),
-                    descripcion = s.descripcion.trim()
+            _categoria.update {
+                it.copy(
+                    isSubmitting = true,
+                    errorMsg = null,
+                    success = false
                 )
-                Result.success(Unit)
-            } catch (e: Exception) {
-                Result.failure(e)
             }
 
+            val result = repository.agregarCategoria(
+                nombre = s.nombre.trim(),
+                descripcion = s.descripcion.trim()
+            )
+
             _categoria.update {
-                if (result.isSuccess) it.copy(isSubmitting = false, success = true, errorMsg = null)
-                else it.copy(
-                    isSubmitting = false,
-                    success = false,
-                    errorMsg = result.exceptionOrNull()?.message ?: "No se pudo guardar la categoría"
-                )
+                if (result.isSuccess) {
+                    // Recargar la lista de categorías después de agregar una nueva
+                    loadCategorias()
+                    loadNombresCategorias()
+
+                    // Limpiar el formulario
+                    it.copy(
+                        isSubmitting = false,
+                        success = true,
+                        errorMsg = null,
+                        nombre = "",
+                        descripcion = ""
+                    )
+                } else {
+                    it.copy(
+                        isSubmitting = false,
+                        success = false,
+                        errorMsg = result.exceptionOrNull()?.message ?: "No se pudo guardar la categoría"
+                    )
+                }
+            }
+        }
+    }
+
+    // Cargar todas las categorías con sus datos completos
+    fun loadCategorias() {
+        viewModelScope.launch {
+            _categoria.update { it.copy(isLoading = true) }
+            try {
+                val categorias = repository.obtenerTodasLasCategorias()
+                _categoria.update {
+                    it.copy(
+                        categorias = categorias,
+                        isLoading = false
+                    )
+                }
+            } catch (e: Exception) {
+                _categoria.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMsg = "Error al cargar categorías: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    // Cargar solo los nombres de las categorías (para combobox, etc.)
+    fun loadNombresCategorias() {
+        viewModelScope.launch {
+            try {
+                val nombres = repository.obtenerNombresCategorias()
+                _categoria.update {
+                    it.copy(nombresCategorias = nombres)
+                }
+            } catch (e: Exception) {
+                println("Error cargando nombres de categorías: ${e.message}")
+            }
+        }
+    }
+
+    // Sincronizar categorías con el backend
+    fun sincronizarCategorias() {
+        viewModelScope.launch {
+            _categoria.update { it.copy(isLoading = true) }
+            try {
+                repository.sincronizarCategoriasDesdeBackend()
+                loadCategorias()
+                loadNombresCategorias()
+                _categoria.update { it.copy(isLoading = false) }
+            } catch (e: Exception) {
+                _categoria.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMsg = "Error sincronizando categorías: ${e.message}"
+                    )
+                }
             }
         }
     }
 
     fun clearCategoriaResult() {
-        _categoria.update { CategoriaUiState() }
+        _categoria.update {
+            it.copy(
+                success = false,
+                errorMsg = null,
+                nombreError = null,
+                descripcionError = null
+            )
+        }
+    }
+
+    // Función para limpiar completamente el formulario de categoría
+    fun resetCategoriaForm() {
+        _categoria.update {
+            CategoriaUiState(
+                categorias = it.categorias,
+                nombresCategorias = it.nombresCategorias
+            )
+        }
+    }
+
+    // En el init del ViewModel, carga las categorías al iniciar
+    init {
+        viewModelScope.launch {
+            // Cargar nombres de categorías al iniciar para que estén disponibles
+            loadNombresCategorias()
+        }
     }
 
     // --------- Productos cargar lista ---------

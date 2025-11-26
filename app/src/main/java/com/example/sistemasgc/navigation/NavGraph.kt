@@ -170,13 +170,13 @@ fun AppNavGraph(
                             authViewModel.clearCategoriaResult()
                         }
                     }
-                    CategoriaScreen(
-                        onAddCategory = { nombre, descripcion ->
-                            authViewModel.onCategoriaNombreChange(nombre)
-                            authViewModel.onCategoriaDescripcionChange(descripcion)
-                            authViewModel.submitCategoria()
-                        },
-                        onCancel = { navController.popBackStack() }
+                    CategoriaScreenVM(
+                        viewModel = authViewModel, // ✅ PASA el ViewModel aquí
+                        onCancel = { navController.popBackStack() },
+                        onSuccess = {
+                            // Navegar a productos después de guardar exitosamente
+                            navController.navigate(Route.Productos.path)
+                        }
                     )
                 }
                 composable(Route.Proveedores.path) {
