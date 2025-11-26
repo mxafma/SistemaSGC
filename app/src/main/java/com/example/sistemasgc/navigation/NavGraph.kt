@@ -229,7 +229,10 @@ fun AppNavGraph(
                 }
 
                 composable(Route.DetallesCompras.path) {
-                    DetallesComprasScreen(onBack = { navController.popBackStack() })
+                    DetallesComprasScreen(
+                        onBack = { navController.popBackStack() },
+                        viewModel = authViewModel
+                    )
                 }
                 composable(Route.Reportes.path) {
                     ReportesScreen(

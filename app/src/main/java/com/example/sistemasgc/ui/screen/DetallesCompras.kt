@@ -5,15 +5,20 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-
+import com.example.sistemasgc.ui.viewmodel.AuthViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 // Data class para los productos del detalle
 data class ProductoDetalle(
     val id: Int,
@@ -24,14 +29,27 @@ data class ProductoDetalle(
 
 @Composable
 fun DetallesComprasScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    viewModel: AuthViewModel
 ) {
-    // Datos de ejemplo para el detalle de compra
-    val productosCompra = listOf(
-        ProductoDetalle(1, "Producto A", 5, 25.50),
-        ProductoDetalle(2, "Producto B", 3, 15.75),
-        ProductoDetalle(3, "Producto C", 10, 8.99)
-    )
+
+
+    LaunchedEffect(Unit) {
+        viewModel.loadProductos()
+    }
+
+    val productosNombres by viewModel.productosNombres.collectAsState()
+
+    var query by rememberSaveable { mutableStateOf("") }
+    var expanded by remember { mutableStateOf(false) }
+    val filteredProducts = productosNombres.filter {
+        it.contains(query, ignoreCase = true)
+    }
+
+    var cantidad by rememberSaveable { mutableStateOf("") }
+    var precioUnitario by rememberSaveable { mutableStateOf("") }
+
+    val productosSeleccionados = remember { mutableStateListOf<ProductoDetalle>() }
 
     Surface(color = MaterialTheme.colorScheme.background) {
         Column(
@@ -40,21 +58,124 @@ fun DetallesComprasScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Título principal
             Text(
                 text = "Compras",
                 style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            // Subtítulo
             Text(
                 text = "Detalle Compra",
                 style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Medium),
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
-            // Encabezados de la tabla
+            // -------- Buscador con lista desplegable --------
+            @OptIn(ExperimentalMaterial3Api::class)
+            ExposedDropdownMenuBox(
+                expanded = expanded && filteredProducts.isNotEmpty(),
+                onExpandedChange = { expanded = it }
+            ) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = {
+                        query = it
+                        expanded = true
+                    },
+                    label = { Text("Buscar producto") },
+                    singleLine = true,
+                    trailingIcon = {
+                        IconButton(onClick = { expanded = true }) {
+                            Icon(Icons.Filled.ArrowDropDown, contentDescription = "Desplegar")
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
+                )
+
+                ExposedDropdownMenu(
+                    expanded = expanded && filteredProducts.isNotEmpty(),
+                    onDismissRequest = { expanded = false },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    filteredProducts.forEach { producto ->
+                        DropdownMenuItem(
+                            text = { Text(producto) },
+                            onClick = {
+                                query = producto
+                                expanded = false
+                            }
+                        )
+                    }
+
+                    if (filteredProducts.isEmpty()) {
+                        DropdownMenuItem(
+                            text = { Text("(sin resultados)") },
+                            onClick = { expanded = false }
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // -------- Cantidad y Precio --------
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                OutlinedTextField(
+                    value = cantidad,
+                    onValueChange = { cantidad = it },
+                    label = { Text("Cantidad") },
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 4.dp),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = precioUnitario,
+                    onValueChange = { precioUnitario = it },
+                    label = { Text("Precio Unitario") },
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 4.dp),
+                    singleLine = true
+                )
+            }
+
+            // -------- Botón Agregar --------
+            Button(
+                onClick = {
+                    val cantidadInt = cantidad.toIntOrNull() ?: 0
+                    val precioDouble = precioUnitario.toDoubleOrNull() ?: 0.0
+
+                    if (query.isNotBlank() && cantidadInt > 0 && precioDouble > 0.0) {
+                        productosSeleccionados.add(
+                            ProductoDetalle(
+                                id = productosSeleccionados.size + 1,
+                                nombre = query,
+                                cantidad = cantidadInt,
+                                precioUnitario = precioDouble
+                            )
+                        )
+                        // Limpiar campos
+                        query = ""
+                        cantidad = ""
+                        precioUnitario = ""
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+            ) {
+                Text("Agregar producto")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // -------- Encabezados de la tabla --------
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -81,36 +202,34 @@ fun DetallesComprasScreen(
                 )
             }
 
-            // Lista de productos del detalle
+            // -------- Lista de productos seleccionados --------
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
                     .padding(vertical = 8.dp)
             ) {
-                items(productosCompra) { producto ->
+                items(productosSeleccionados) { producto ->
                     ProductoDetalleItem(producto = producto)
                 }
             }
 
-            // Resumen de la compra
+            // -------- Resumen de la compra --------
+            val totalProductos = productosSeleccionados.sumOf { it.cantidad }
+            val totalPrecio = productosSeleccionados.sumOf { it.precioUnitario * it.cantidad }
+
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 16.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = "Resumen de Compra",
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
-
-                    val totalProductos = productosCompra.sumOf { it.cantidad }
-                    val totalPrecio = productosCompra.sumOf { it.precioUnitario * it.cantidad }
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -132,7 +251,7 @@ fun DetallesComprasScreen(
                 }
             }
 
-            // Botón Aceptar
+            // -------- Botón Aceptar --------
             Button(
                 onClick = onBack,
                 modifier = Modifier
@@ -146,11 +265,7 @@ fun DetallesComprasScreen(
 }
 
 @Composable
-fun ProductoDetalleItem(
-    producto: ProductoDetalle
-) {
-
-
+fun ProductoDetalleItem(producto: ProductoDetalle) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -184,14 +299,5 @@ fun ProductoDetalleItem(
                 textAlign = TextAlign.End
             )
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun PreviewDetallesComprasScreen() {
-    MaterialTheme {
-        DetallesComprasScreen(onBack = {})
     }
 }
