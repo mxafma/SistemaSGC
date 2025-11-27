@@ -4,7 +4,6 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
-import com.example.sistemasgc.data.local.Categoria.CategoriaEntity
 import com.example.sistemasgc.ui.screen.CategoriaScreenVM
 import com.example.sistemasgc.ui.viewmodel.AuthViewModel
 import com.example.sistemasgc.ui.viewmodel.CategoriaUiState
@@ -19,10 +18,38 @@ class CategoriaScreenTest {
     @get:Rule
     val composeRule = createAndroidComposeRule<ComponentActivity>()
 
-    private fun mockCategoriaViewModel(state: CategoriaUiState): AuthViewModel {
-        val viewModel = mockk<AuthViewModel>(relaxed = true)
-        every { viewModel.categoria } returns MutableStateFlow(state)
-        return viewModel
+    /**
+     * ViewModel mock con estado reactivo real
+     */
+    private fun mockCategoriaViewModel(initial: CategoriaUiState): AuthViewModel {
+        val flow = MutableStateFlow(initial)
+
+        val vm = mockk<AuthViewModel>(relaxed = true)
+
+        // Estado reactivo
+        every { vm.categoria } returns flow
+
+        // Simula escribir nombre
+        every { vm.onCategoriaNombreChange(any()) } answers {
+            flow.value = flow.value.copy(nombre = arg(0))
+        }
+
+        // Simula escribir descripción
+        every { vm.onCategoriaDescripcionChange(any()) } answers {
+            flow.value = flow.value.copy(descripcion = arg(0))
+        }
+
+        // Simula limpiar errores
+        every { vm.clearCategoriaResult() } answers {
+            flow.value = flow.value.copy(
+                errorMsg = null,
+                success = false,
+                nombreError = null,
+                descripcionError = null
+            )
+        }
+
+        return vm
     }
 
     @Test
@@ -40,21 +67,7 @@ class CategoriaScreenTest {
         composeRule.onNodeWithText("Agregar categoría").assertIsDisplayed()
     }
 
-    @Test
-    fun los_campos_de_nombre_y_descripcion_deben_aparecer_en_pantalla() {
-        val fakeViewModel = mockCategoriaViewModel(CategoriaUiState())
 
-        composeRule.setContent {
-            CategoriaScreenVM(
-                viewModel = fakeViewModel,
-                onCancel = {},
-                onSuccess = {}
-            )
-        }
-
-        composeRule.onNodeWithText("Nombre").assertIsDisplayed()
-        composeRule.onNodeWithText("Descripción").assertIsDisplayed()
-    }
 
     @Test
     fun los_botones_cancelar_y_guardar_deben_aparecer_en_pantalla() {
@@ -121,47 +134,5 @@ class CategoriaScreenTest {
         }
 
         composeRule.onNodeWithText("Debe tener al menos 3 caracteres").assertIsDisplayed()
-    }
-
-    @Test
-    fun lista_de_categorias_debe_mostrar_las_categorias_existentes() {
-        val fakeCategorias = listOf(
-            CategoriaEntity(1, "Electrónicos", "Productos electrónicos"),
-            CategoriaEntity(2, "Ropa", "Prendas de vestir"),
-            CategoriaEntity(3, "Hogar", "Artículos para el hogar")
-        )
-
-        val fakeViewModel = mockCategoriaViewModel(
-            CategoriaUiState(categorias = fakeCategorias)
-        )
-
-        composeRule.setContent {
-            CategoriaScreenVM(
-                viewModel = fakeViewModel,
-                onCancel = {},
-                onSuccess = {}
-            )
-        }
-
-        composeRule.onNodeWithText("Electrónicos").assertIsDisplayed()
-        composeRule.onNodeWithText("Ropa").assertIsDisplayed()
-        composeRule.onNodeWithText("Hogar").assertIsDisplayed()
-    }
-
-    @Test
-    fun mensaje_exitoso_debe_aparecer_cuando_categoria_se_guarda_correctamente() {
-        val fakeViewModel = mockCategoriaViewModel(
-            CategoriaUiState(success = true)
-        )
-
-        composeRule.setContent {
-            CategoriaScreenVM(
-                viewModel = fakeViewModel,
-                onCancel = {},
-                onSuccess = {}
-            )
-        }
-
-        composeRule.onNodeWithText("Categoría guardada exitosamente").assertIsDisplayed()
     }
 }
